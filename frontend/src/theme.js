@@ -1,32 +1,33 @@
-export const ROUTE = '#d9480f' // signal orange: the convoy's chosen route
-
 export const METHODS = [
-  {
-    key: 'brute', name: 'Brute force', short: 'Brute force', color: '#7c5e3c', dot: 'rgba(124, 94, 60, 0.55)',
-    how: 'Full Dijkstra from each stop, one after another, then every visit order checked',
-    orderVerb: 'Checking every order',
-  },
-  {
-    key: 'parallel', name: 'Parallel classical', short: 'Parallel', color: '#0b7a69', dot: 'rgba(11, 122, 105, 0.55)',
-    how: 'Bounded Dijkstra from all stops at once on worker processes, then Held–Karp',
-    orderVerb: 'Held–Karp DP',
-  },
-  {
-    key: 'quantum', name: 'Quantum (simulated)', short: 'Quantum', color: '#3451c6', dot: 'rgba(52, 81, 198, 0.55)',
-    how: 'Same parallel road search, then Grover minimum search over visit orders in Qiskit',
-    orderVerb: 'Grover search (simulator)',
-  },
+  { key: 'brute', name: 'Brute force', color: '#7c5e3c' },
+  { key: 'parallel', name: 'Parallel', color: '#0b7a69' },
+  { key: 'quantum', name: 'Quantum (simulated)', color: '#3451c6' },
 ]
 
-export const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? '' : 's'}`
-
-export const stopLetter = (i) => String.fromCharCode(65 + i)
-
-export function fmtMs(ms) {
-  return `${(ms / 1000).toFixed(2)} s`
-}
+export const fmt = (n) => Math.round(n).toLocaleString('en-US')
+export const fmtSec = (ms) => `${(ms / 1000).toFixed(2)} s`
 
 export function fmtMin(sec) {
-  const m = sec / 60
-  return m < 60 ? `${m.toFixed(1)} min` : `${Math.floor(m / 60)} h ${Math.round(m % 60)} min`
+  const m = Math.round(sec / 60)
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`
+}
+
+export function fmtPct(p) {
+  return p >= 10 ? `${p.toFixed(0)}%` : p >= 1 ? `${p.toFixed(1)}%` : `${p.toFixed(2)}%`
+}
+
+/* bar width on a log scale: 0.01% -> 5%, 100% -> 100% */
+export function barWidth(p) {
+  const x = Math.min(100, Math.max(0.01, p))
+  return 5 + (95 * (Math.log10(x) + 2)) / 4
+}
+
+/* N = n! * C(n+k-1, k-1) */
+export function planCount(k, n) {
+  if (k < 1 || n < 1) return 0
+  let f = 1
+  for (let i = 2; i <= n; i++) f *= i
+  let c = 1
+  for (let i = 1; i <= k - 1; i++) c = (c * (n + i)) / i
+  return f * Math.round(c)
 }

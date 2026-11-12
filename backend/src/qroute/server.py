@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,24 +12,18 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from .network import FLOOD_ZONE, LANDMARKS, SHELTERS
-from .roadgraph import BBOX
 from . import cases as _cases
-from . import vrp
-from .solvers import Solver
-
-MAX_STOPS = 7  # 6! = 720 visit orders -> 10-qubit index register
+from . import pool, run, vrp
 
 state: dict = {}
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    state["solver"] = Solver()
     state["pool"] = vrp.make_pool()
+    asyncio.get_running_loop().run_in_executor(None, pool.pool_matrix)  # warm the OSRM pool matrix
     yield
     state["pool"].shutdown()
-    state["solver"].close()
 
 
 app = FastAPI(title="Quantum convoy router", lifespan=lifespan)
@@ -36,33 +31,31 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
                    allow_methods=["*"], allow_headers=["*"])
 
 
-class Stop(BaseModel):
-    lat: float = Field(ge=BBOX[0], le=BBOX[2])
-    lon: float = Field(ge=BBOX[1], le=BBOX[3])
+class Pt(BaseModel):
+    name: str = "point"
+    lat: float = Field(ge=23.5, le=37.5)
+    lon: float = Field(ge=60.5, le=77.5)
 
 
-class SolveRequest(BaseModel):
-    stops: list[Stop] = Field(min_length=2, max_length=MAX_STOPS)
-    return_to_start: bool = False
+class RunRequest(BaseModel):
+    hubs: list[Pt] = Field(min_length=1, max_length=3)
+    sites: list[Pt] = Field(min_length=2, max_length=10)
+    return_to_depot: bool = False
 
 
-@app.get("/api/info")
-def info() -> dict:
-    s = state["solver"]
-    places = [{"name": k, "lat": v[0], "lon": v[1],
-               "kind": "shelter" if k in SHELTERS else "flood" if k in FLOOD_ZONE else "place"}
-              for k, v in LANDMARKS.items()]
-    return {"bbox": BBOX, "nodes": s.g.n, "edges": s.g.num_edges, "workers": s.workers,
-            "max_stops": MAX_STOPS, "places": places}
+@app.get("/api/random")
+def random_route(seed: int | None = None) -> dict:
+    return pool.random_scenario(seed)
 
 
-@app.post("/api/solve")
-async def solve(req: SolveRequest) -> dict:
-    s = state["solver"]
-    try:
-        return await run_in_threadpool(s.solve, [(p.lat, p.lon) for p in req.stops], req.return_to_start)
-    except KeyError as e:  # a stop unreachable in the road graph
-        raise HTTPException(422, f"Stop not reachable on the road network: {e}") from e
+@app.post("/api/run")
+async def run_route(req: RunRequest) -> dict:
+    k, n = len(req.hubs), len(req.sites)
+    N = vrp.num_plans(n, k)
+    if N > 4_000_000:
+        raise HTTPException(422, f"Too many possible plans (N={N:,}); remove a site or a hub")
+    return await run_in_threadpool(run.run_plan, [h.model_dump() for h in req.hubs],
+                                   [s.model_dump() for s in req.sites], state["pool"], req.return_to_depot)
 
 
 CASES_DIR = _cases.OUT_DIRS[0]
