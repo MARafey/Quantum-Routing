@@ -1,0 +1,257 @@
+{
+ "generated": "2026-11-12 23:16:08",
+ "rows": [
+  {
+   "region": "pakistan",
+   "seed": 7,
+   "k": 2,
+   "n": 9,
+   "N": 3628800,
+   "qubits": 22,
+   "matrix_source": "osrm-pool",
+   "request_s": 3.89,
+   "best_makespan_h": 18.07,
+   "methods": {
+    "brute": {
+     "ms": 643.0328000024019,
+     "evaluated": 3628800,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 65049.3,
+     "workers": null
+    },
+    "parallel": {
+     "ms": 310.22630000006757,
+     "evaluated": 3628800,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 65049.3,
+     "workers": 8
+    },
+    "quantum": {
+     "ms": 1423.1418999988819,
+     "evaluated": null,
+     "queries": 44013,
+     "queries_to_min": 8326,
+     "heuristic_evals": null,
+     "coverage_pct": 0.22944223985890652,
+     "optimal": true,
+     "makespan_s": 65049.3,
+     "workers": null
+    },
+    "quantum_ws": {
+     "ms": 772.8510999986611,
+     "evaluated": null,
+     "queries": 43855,
+     "queries_to_min": 5096,
+     "heuristic_evals": 354,
+     "coverage_pct": 0.1501873897707231,
+     "optimal": true,
+     "makespan_s": 65049.3,
+     "workers": null
+    }
+   },
+   "subset_dp": {
+    "ms": 19.6,
+    "states": 102627,
+    "makespan_s": 65049.3,
+    "matches_brute_force": true
+   }
+  },
+  {
+   "region": "turkiye-syria",
+   "seed": 3,
+   "k": 1,
+   "n": 10,
+   "N": 3628800,
+   "qubits": 22,
+   "matrix_source": "osrm-pool",
+   "request_s": 11.02,
+   "best_makespan_h": 18.46,
+   "methods": {
+    "brute": {
+     "ms": 3148.495500001445,
+     "evaluated": 3628800,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 66439.8,
+     "workers": null
+    },
+    "parallel": {
+     "ms": 1912.9016000006231,
+     "evaluated": 3628800,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 66439.8,
+     "workers": 8
+    },
+    "quantum": {
+     "ms": 1209.116099998937,
+     "evaluated": null,
+     "queries": 44793,
+     "queries_to_min": 6761,
+     "heuristic_evals": null,
+     "coverage_pct": 0.1863150352733686,
+     "optimal": true,
+     "makespan_s": 66439.8,
+     "workers": null
+    },
+    "quantum_ws": {
+     "ms": 1226.0150000001886,
+     "evaluated": null,
+     "queries": 43533,
+     "queries_to_min": 0,
+     "heuristic_evals": 335,
+     "coverage_pct": 0.009231701940035274,
+     "optimal": true,
+     "makespan_s": 66439.8,
+     "workers": null
+    }
+   },
+   "subset_dp": {
+    "ms": 34.8,
+    "states": 102400,
+    "makespan_s": 66439.8,
+    "matches_brute_force": true
+   }
+  },
+  {
+   "region": "bengal-floods",
+   "seed": 5,
+   "k": 3,
+   "n": 8,
+   "N": 1814400,
+   "qubits": 21,
+   "matrix_source": "osrm-pool",
+   "request_s": 1.89,
+   "best_makespan_h": 8.1,
+   "methods": {
+    "brute": {
+     "ms": 176.83369999940624,
+     "evaluated": 1814400,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 29152.300000000003,
+     "workers": null
+    },
+    "parallel": {
+     "ms": 95.89849999974831,
+     "evaluated": 1814400,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 29152.300000000003,
+     "workers": 8
+    },
+    "quantum": {
+     "ms": 599.4097999973746,
+     "evaluated": null,
+     "queries": 30985,
+     "queries_to_min": 3681,
+     "heuristic_evals": null,
+     "coverage_pct": 0.20287698412698413,
+     "optimal": true,
+     "makespan_s": 29152.300000000003,
+     "workers": null
+    },
+    "quantum_ws": {
+     "ms": 583.603499999299,
+     "evaluated": null,
+     "queries": 31222,
+     "queries_to_min": 3499,
+     "heuristic_evals": 141,
+     "coverage_pct": 0.2006172839506173,
+     "optimal": true,
+     "makespan_s": 29152.300000000003,
+     "workers": null
+    }
+   },
+   "subset_dp": {
+    "ms": 40.7,
+    "states": 62274,
+    "makespan_s": 29152.300000000003,
+    "matches_brute_force": true
+   }
+  },
+  {
+   "region": "nepal-himalaya",
+   "seed": 5,
+   "k": 3,
+   "n": 8,
+   "N": 1814400,
+   "qubits": 21,
+   "matrix_source": "osrm-pool",
+   "request_s": 2.13,
+   "best_makespan_h": 6.35,
+   "methods": {
+    "brute": {
+     "ms": 166.15060000185622,
+     "evaluated": 1814400,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 22855.3,
+     "workers": null
+    },
+    "parallel": {
+     "ms": 87.50030000010156,
+     "evaluated": 1814400,
+     "queries": null,
+     "queries_to_min": null,
+     "heuristic_evals": null,
+     "coverage_pct": 100.0,
+     "optimal": true,
+     "makespan_s": 22855.3,
+     "workers": 8
+    },
+    "quantum": {
+     "ms": 704.5083999983035,
+     "evaluated": null,
+     "queries": 31695,
+     "queries_to_min": 4043,
+     "heuristic_evals": null,
+     "coverage_pct": 0.22282848324514992,
+     "optimal": true,
+     "makespan_s": 22855.3,
+     "workers": null
+    },
+    "quantum_ws": {
+     "ms": 753.7076999979035,
+     "evaluated": null,
+     "queries": 31115,
+     "queries_to_min": 3065,
+     "heuristic_evals": 303,
+     "coverage_pct": 0.18562610229276896,
+     "optimal": true,
+     "makespan_s": 22855.3,
+     "workers": null
+    }
+   },
+   "subset_dp": {
+    "ms": 36.9,
+    "states": 62274,
+    "makespan_s": 22855.3,
+    "matches_brute_force": true
+   }
+  }
+ ]
+}

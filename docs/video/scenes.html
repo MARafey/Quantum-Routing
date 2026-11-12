@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Video scenes</title>
+<!-- Animated scenes for the submission video. Open with ?scene=1|2|3|5 ; each scene's timeline matches its narration clip. -->
+<style>
+:root { --ink:#151a21; --ink2:#49525f; --ink3:#7b8592; --line:#e2e5e9; --paper:#fbfaf8; --route:#d9480f; --q:#3451c6; --brute:#7c5e3c; --par:#0b7a69; }
+* { box-sizing:border-box; margin:0; }
+html, body { width:1600px; height:900px; overflow:hidden; background:var(--paper); color:var(--ink); font-family:"Segoe UI", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+.scene { position:absolute; inset:0; padding:72px 96px; display:none; }
+.brand { position:absolute; left:96px; bottom:44px; font-size:18px; color:var(--ink3); letter-spacing:.01em; }
+.kicker { font-size:22px; color:var(--route); font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+h1 { font-size:72px; line-height:1.05; font-weight:600; letter-spacing:-.022em; margin-top:18px; max-width:1200px; }
+h2 { font-size:54px; line-height:1.1; font-weight:600; letter-spacing:-.02em; }
+.big { font-size:120px; font-weight:600; letter-spacing:-.03em; font-variant-numeric:tabular-nums; line-height:1; }
+.muted { color:var(--ink2); }
+.in { opacity:0; transform:translateY(16px); animation:in .7s cubic-bezier(.23,1,.32,1) forwards; }
+@keyframes in { to { opacity:1; transform:none; } }
+.fade { opacity:0; animation:fade .8s ease forwards; }
+@keyframes fade { to { opacity:1; } }
+.tag { display:inline-grid; place-items:center; width:46px; height:46px; border:3px solid var(--ink); border-radius:6px; background:#fff; font-weight:600; font-size:22px; position:absolute; }
+.tag.hub { background:var(--ink); color:#fff; }
+.stats { display:flex; gap:96px; margin-top:56px; }
+.stat b { display:block; font-size:84px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.stat span { font-size:24px; color:var(--ink2); }
+svg line.q { stroke:var(--ink3); stroke-width:2.5; stroke-dasharray:8 8; opacity:0; animation:fade .6s ease forwards; }
+.row { display:grid; grid-template-columns:420px 1fr 340px; align-items:center; gap:28px; margin:22px 0; font-size:30px; }
+.bar { height:26px; background:var(--line); border-radius:4px; overflow:hidden; }
+.bar i { display:block; height:100%; transform-origin:left; transform:scaleX(0); animation:grow 1.4s cubic-bezier(.77,0,.175,1) forwards; }
+@keyframes grow { to { transform:scaleX(var(--w)); } }
+.num { font-variant-numeric:tabular-nums; font-weight:600; text-align:right; }
+.qubits { display:flex; gap:10px; margin-top:28px; }
+.qubits span { width:40px; height:40px; border-radius:50%; border:3px solid var(--q); opacity:0; animation:qon .35s ease forwards; }
+@keyframes qon { to { opacity:1; background:#dfe5fb; } }
+.amps { display:flex; gap:6px; align-items:flex-end; height:230px; margin-top:16px; border-bottom:2px solid var(--line); }
+.amps i { width:22px; background:#c9d2f2; height:30px; border-radius:3px 3px 0 0; }
+.amps i.m { background:var(--q); animation:amp 9s ease-in-out forwards; animation-delay:var(--d); }
+.amps i.u { animation:shrink 9s ease-in-out forwards; animation-delay:var(--d); }
+@keyframes amp { 0%{height:30px} 30%{height:110px} 60%{height:180px} 100%{height:215px} }
+@keyframes shrink { 0%{height:30px} 100%{height:14px} }
+.pill { display:inline-block; padding:8px 16px; border-radius:6px; font-size:24px; font-weight:600; margin-right:12px; }
+.grid4 { display:grid; grid-template-columns:1fr 1fr; gap:36px 72px; margin-top:44px; }
+.card b { display:block; font-size:62px; font-weight:600; letter-spacing:-.02em; color:var(--q); font-variant-numeric:tabular-nums; }
+.card span { font-size:25px; color:var(--ink2); line-height:1.35; display:block; max-width:620px; }
+.caveat { margin-top:48px; font-size:28px; color:var(--ink); border-left:5px solid var(--route); padding-left:20px; max-width:1250px; line-height:1.4; }
+</style></head><body>
+
+<!-- Scene 1: the problem (≈17 s) -->
+<section class="scene" id="s1">
+  <div class="kicker in" style="animation-delay:.3s">Pakistan · monsoon floods 2022</div>
+  <h1 class="in" style="animation-delay:.8s">A third of the country under water</h1>
+  <div class="stats">
+    <div class="stat in" style="animation-delay:2.6s"><b>33 million</b><span>people affected</span></div>
+    <div class="stat in" style="animation-delay:3.4s"><b>≈ 1/3</b><span>of the land flooded</span></div>
+  </div>
+  <div style="position:absolute; left:860px; top:330px; width:640px; height:420px">
+    <svg width="640" height="420" style="position:absolute; inset:0">
+      <line class="q" x1="60" y1="360" x2="250" y2="120" style="animation-delay:9.5s"/><line class="q" x1="60" y1="360" x2="420" y2="300" style="animation-delay:9.8s"/>
+      <line class="q" x1="330" y1="60" x2="530" y2="180" style="animation-delay:10.1s"/><line class="q" x1="330" y1="60" x2="150" y2="230" style="animation-delay:10.4s"/>
+      <line class="q" x1="560" y1="380" x2="420" y2="300" style="animation-delay:10.7s"/><line class="q" x1="560" y1="380" x2="300" y2="380" style="animation-delay:11s"/>
+    </svg>
+    <span class="tag hub in" style="left:37px; top:337px; animation-delay:6.6s">A</span>
+    <span class="tag hub in" style="left:307px; top:37px; animation-delay:6.9s">B</span>
+    <span class="tag hub in" style="left:537px; top:357px; animation-delay:7.2s">C</span>
+    <span class="tag in" style="left:227px; top:97px; animation-delay:7.6s">1</span><span class="tag in" style="left:397px; top:277px; animation-delay:7.8s">2</span>
+    <span class="tag in" style="left:507px; top:157px; animation-delay:8s">3</span><span class="tag in" style="left:127px; top:207px; animation-delay:8.2s">4</span>
+    <span class="tag in" style="left:277px; top:357px; animation-delay:8.4s">5</span><span class="tag in" style="left:437px; top:57px; animation-delay:8.6s">6</span>
+    <span class="tag in" style="left:17px; top:137px; animation-delay:8.8s">7</span><span class="tag in" style="left:597px; top:257px; animation-delay:9s">8</span>
+  </div>
+  <h2 class="in" style="position:absolute; left:96px; top:640px; max-width:700px; animation-delay:12.2s">Which convoy goes where, <span style="color:var(--route)">and in what order?</span></h2>
+  <div class="brand">Quantum-assisted relief routing · Qiskit</div>
+</section>
+
+<!-- Scene 2: combinatorial explosion (≈21 s) -->
+<section class="scene" id="s2">
+  <div class="kicker in" style="animation-delay:.2s">Why it is hard</div>
+  <h1 class="in" style="animation-delay:.6s">Every extra town multiplies the plans</h1>
+  <div style="margin-top:56px">
+    <div class="row in" style="animation-delay:2.2s"><span>3 hubs · 8 towns</span><div class="bar"><i style="--w:.31; background:var(--ink2); animation-delay:2.4s"></i></div><span class="num">1,814,400</span></div>
+    <div class="row in" style="animation-delay:6.4s"><span>1 hub · 10 towns</span><div class="bar"><i style="--w:.33; background:var(--ink2); animation-delay:6.6s"></i></div><span class="num">3,628,800</span></div>
+    <div class="row in" style="animation-delay:9.4s"><span>3 hubs · 20 towns</span><div class="bar"><i style="--w:1; background:var(--route); animation-delay:9.6s"></i></div><span class="num">5.6 × 10²⁰</span></div>
+    <div class="muted fade" style="font-size:22px; margin-top:6px; animation-delay:11s">Bar length on a log scale</div>
+  </div>
+  <h2 class="in" style="margin-top:64px; animation-delay:13.4s"><span style="color:var(--brute)">Brute force</span> must check <u>every</u> plan.</h2>
+  <div class="muted in" style="font-size:30px; margin-top:16px; animation-delay:15.8s">The last town's wait for aid depends on getting this right.</div>
+  <div class="brand">Quantum-assisted relief routing · Qiskit</div>
+</section>
+
+<!-- Scene 3: where quantum is applied (≈28 s) -->
+<section class="scene" id="s3">
+  <div class="kicker in" style="animation-delay:.2s">Where we apply quantum</div>
+  <h1 class="in" style="animation-delay:.6s; font-size:64px">Every plan becomes a number in a 22-qubit register</h1>
+  <div class="qubits" id="qb"></div>
+  <div class="muted fade" style="font-size:24px; margin-top:12px; animation-delay:5.6s">⌈log₂ 3,628,800⌉ = 22 qubits index all 3.6 million plans</div>
+  <div style="display:grid; grid-template-columns:1fr 560px; gap:64px; margin-top:40px">
+    <div>
+      <div class="fade" style="font-size:28px; font-weight:600; animation-delay:8s">Grover minimum search (Dürr–Høyer)</div>
+      <div class="muted fade" style="font-size:22px; margin-top:6px; animation-delay:8.4s">Amplitude of plans better than the current best grows each round</div>
+      <div class="amps fade" id="amps" style="animation-delay:8.6s"></div>
+    </div>
+    <div style="padding-top:20px">
+      <div class="in" style="animation-delay:14.5s"><span class="big" style="color:var(--q); font-size:96px">√N</span><span style="font-size:34px; margin-left:16px">oracle queries</span></div>
+      <div class="in muted" style="font-size:30px; margin-top:8px; animation-delay:15.3s">instead of <b style="color:var(--brute)">N</b> plan evaluations</div>
+      <div class="in" style="margin-top:36px; font-size:26px; line-height:1.45; animation-delay:18.6s">+ classical warm start<br><span class="muted">as in Grover adaptive search</span></div>
+      <div class="in" style="margin-top:28px; animation-delay:22.4s"><span class="pill" style="background:#eef1fb; color:var(--q)">Qiskit</span><span class="pill" style="background:#eef1fb; color:var(--q)">exact Grover statistics</span></div>
+      <div class="in muted" style="font-size:22px; margin-top:12px; animation-delay:23.6s">verified against Qiskit circuits</div>
+    </div>
+  </div>
+  <div class="brand">Quantum-assisted relief routing · Qiskit</div>
+</section>
+
+<!-- Scene 5: what we measured and what we claim (≈16 s) -->
+<section class="scene" id="s5">
+  <div class="kicker in" style="animation-delay:.2s">What we measured, and what we claim</div>
+  <div class="grid4" style="margin-top:28px">
+    <div class="card in" style="animation-delay:.5s"><b>0.1–0.3%</b><span>of plans examined by quantum search before holding the optimum; exhaustive search examines 100%</span></div>
+    <div class="card in" style="animation-delay:1.1s"><b>620–800×</b><span>fewer queries than exhaustive search at 3.6 million plans; the gap grows with problem size</span></div>
+    <div class="card in" style="animation-delay:1.7s"><b>22 qubits</b><span>the minimal register ⌈log₂ N⌉ is optimal; each extra qubit costs ≈ 1.4× more queries</span></div>
+    <div class="card in" style="animation-delay:2.3s"><b>3,323</b><span>TSPLIB burma14 optimum reproduced; Grover found it in 100% of runs</span></div>
+  </div>
+  <div class="caveat in" style="animation-delay:2.6s; margin-top:34px">Simulated on a laptop: wall-clock time is not a hardware result.</div>
+  <div class="caveat in" style="animation-delay:12.7s; margin-top:18px; border-color:var(--brute)">Classical subset DP solves these instances in 20–41 ms, and needs fewer steps than plain Grover beyond ≈ 16 sites.</div>
+  <div class="caveat in" style="animation-delay:21.4s; margin-top:18px; border-color:var(--q)">Next step: hybrid quantum–classical algorithms.</div>
+  <div class="muted in" style="font-size:26px; margin-top:24px; animation-delay:25s">github.com/MARafey/Quantum-Routing · all code, data and results reproducible</div>
+  <div class="brand">Quantum-assisted relief routing · Qiskit</div>
+</section>
+
+<script>
+const n = new URLSearchParams(location.search).get('scene') || '1'
+document.getElementById('s' + n).style.display = 'block'
+const qb = document.getElementById('qb')
+for (let i = 0; i < 22; i++) { const s = document.createElement('span'); s.style.animationDelay = (2.4 + i * 0.12) + 's'; qb.appendChild(s) }
+const amps = document.getElementById('amps')
+const marked = new Set([5, 17, 26])
+for (let i = 0; i < 34; i++) { const b = document.createElement('i'); b.className = marked.has(i) ? 'm' : 'u'; b.style.setProperty('--d', '9.2s'); amps.appendChild(b) }
+</script>
+</body></html>
