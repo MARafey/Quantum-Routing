@@ -1,204 +1,241 @@
-import { useEffect, useMemo, useState } from 'react'
-import MapView, { GROUP_COLORS } from './MapView.jsx'
-import { Bars, LineChart, Histogram } from './Charts.jsx'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import RaceMap from './RaceMap.jsx'
+import Study from './Study.jsx'
+import { METHODS, ROUTE, fmtMin, fmtMs, plural, stopLetter } from './theme.js'
 import './App.css'
 
-const fmt = (v, d = 1) => (v === null || v === undefined ? '–' : Number(v).toFixed(d))
+/* Playback storyboard
+   act1  the race: each solver's replay length is proportional to its measured wall-clock time;
+         the slowest takes RACE_MS
+   act2  how each chose the visit order, equal length so it can be read
+   act3  the chosen route draws itself                                                     */
+const RACE_MS = 6500
+const ORDER_MS = 3200
+const ROUTE_MS = 1400
+const SPINNER_DELAY_MS = 300
 
-function MethodTable({ methods, selected, onSelect }) {
-  return (
-    <table className="tbl">
-      <thead>
-        <tr><th>Method</th><th>Objective</th><th>Gap</th><th>Avg travel</th><th>Max bus load</th><th>Overloaded segs</th><th>Shelter overflow</th></tr>
-      </thead>
-      <tbody>
-        {methods.map((m, i) => (
-          <tr key={m.method} className={i === selected ? 'sel' : ''} onClick={() => onSelect(i)}>
-            <td>{m.method}</td>
-            <td>{fmt(m.energy, 0)}</td>
-            <td className={m.gap_pct < 1e-6 ? 'good' : 'bad'}>{fmt(m.gap_pct, 2)}%</td>
-            <td>{fmt(m.metrics.avg_travel_min)} min</td>
-            <td className={m.metrics.max_bus_load_factor > 1 ? 'bad' : ''}>{fmt(100 * m.metrics.max_bus_load_factor, 0)}%</td>
-            <td>{m.metrics.overloaded_bus_segments}</td>
-            <td>{m.metrics.shelter_overflow}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
+const EXAMPLE = ['Saddar', 'Gulshan', 'North Nazimabad', 'Malir', 'Jauhar', 'Sohrab Goth']
+
+function placeName(places, lat, lon) {
+  let best = null, bd = Infinity
+  for (const p of places) {
+    const d = Math.hypot(p.lat - lat, (p.lon - lon) * 0.91)
+    if (d < bd) { bd = d; best = p }
+  }
+  return bd < 0.014 ? best.name : `${lat.toFixed(4)}, ${lon.toFixed(4)}`
 }
 
-function Assignment({ instance, assignment }) {
+function Results({ result }) {
+  const best = result.best_cost
+  const rows = METHODS.map((m) => ({ m, r: result[m.key] }))
+  const fastest = Math.min(...rows.map((x) => x.r.total_ms))
+  const work = (key, r) => key === 'brute' ? plural(r.order.evaluated, 'order')
+    : key === 'parallel' ? plural(r.order.evaluated, 'DP state')
+    : r.order.N > 1 ? plural(r.order.queries_to_min ?? 0, 'query').replace('querys', 'queries') : '–'
   return (
-    <div className="assign">
-      {assignment.map((r, g) => {
-        const o = instance.options[g][r]
-        const grp = instance.groups[g]
-        return (
-          <div key={g} className="assign-row">
-            <span className="dot" style={{ background: GROUP_COLORS[g % 12] }} />
-            <b>G{g + 1}</b>&nbsp;{grp.origin} ({grp.size}) → {o.shelter}
-            <span className="muted">&nbsp;opt {r + 1} · {o.travel_min} min · {o.transfers} xfer · {o.legs.filter((l) => l.kind === 'bus').map((l) => l.line.split(' ')[0]).join('→')}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function SmallTab({ data, network }) {
-  const s = data.small
-  const exactIdx = s.methods.findIndex((m) => m.method.startsWith('Exact'))
-  const [sel, setSel] = useState(s.methods.length - 1)
-  const [showAll, setShowAll] = useState(false)
-  const m = s.methods[sel]
-  const runs = s.qaoa
-  const bestXY = runs.filter((r) => r.variant === 'xy').at(-1)
-  const bestPen = runs.filter((r) => r.variant === 'penalty').at(-1)
-  return (
-    <div className="split">
-      <div className="left">
-        <MapView network={network} instance={s} assignment={m.assignment} showAllOptions={showAll} />
-        <label className="chk"><input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> show all RAPTOR journey options (QAOA search space)</label>
-      </div>
-      <div className="right">
-        <h3>12-qubit instance — 4 evacuee groups × 3 RAPTOR journeys</h3>
-        <p className="muted">Click a row to draw that method's routes. Exact optimum found by brute force over all {Math.pow(s.K, s.groups.length)} feasible assignments.</p>
-        <MethodTable methods={s.methods} selected={sel} onSelect={setSel} />
-        <h4>Selected: {m.method}</h4>
-        <Assignment instance={s} assignment={m.assignment} />
-
-        <h4>Quantum sampling quality (4096 shots, Aer)</h4>
-        <div className="grid2">
-          <div>
-            <div className="sub">P(feasible sample)</div>
-            <Bars rows={runs.map((r) => ({ label: `${r.variant === 'xy' ? 'XY' : 'Penalty'} p=${r.reps}`, value: r.p_feasible, color: r.variant === 'xy' ? '#2563eb' : '#d97706' }))} />
-          </div>
-          <div>
-            <div className="sub">P(optimal sample) · random guess = {fmt(100 / Math.pow(s.K, s.groups.length), 2)}%</div>
-            <Bars max={Math.max(...runs.map((r) => r.p_optimal), 0.02)} fmt={(v) => (100 * v).toFixed(1) + '%'}
-              rows={runs.map((r) => ({ label: `${r.variant === 'xy' ? 'XY' : 'Penalty'} p=${r.reps}`, value: r.p_optimal, color: r.variant === 'xy' ? '#2563eb' : '#d97706' }))} />
-          </div>
-        </div>
-        <table className="tbl small">
-          <thead><tr><th>Run</th><th>Approx. ratio</th><th>Found opt.</th><th>Depth</th><th>CNOTs</th><th>Evals</th><th>Sim time</th></tr></thead>
-          <tbody>{runs.map((r) => (
-            <tr key={r.variant + r.reps}><td>{r.variant === 'xy' ? 'XY-mixer' : 'Penalty'} p={r.reps}</td><td>{fmt(r.approx_ratio, 3)}</td>
-              <td>{r.found_optimum ? '✔' : '✘'}</td><td>{r.circuit_depth}</td><td>{r.cx_count}</td><td>{r.evaluations}</td><td>{fmt(r.seconds)} s</td></tr>
-          ))}</tbody>
-        </table>
-        <div className="grid2">
-          <div>
-            <div className="sub">Training curve (CVaR loss, best restart)</div>
-            <LineChart xLabel="optimizer evaluation" yLabel="loss"
-              series={[{ name: `XY p=${bestXY.reps}`, color: '#2563eb', points: bestXY.history.map((v, i) => [i, v]) },
-                { name: `Penalty p=${bestPen.reps}`, color: '#d97706', points: bestPen.history.map((v, i) => [i, v]) }]} />
-          </div>
-          <div>
-            <div className="sub">Where solutions sit in the landscape of all {s.landscape.length} feasible assignments</div>
-            <Histogram values={s.landscape} marks={[
-              { label: 'exact', value: s.exact_energy, color: '#059669', row: 0 },
-              { label: 'no coordination', value: s.methods[0].energy, color: '#dc2626', row: 1 },
-              { label: 'QAOA E[feasible]', value: bestXY.expected_feasible_energy, color: '#2563eb', row: 2 },
-            ]} />
-          </div>
-        </div>
-        <h4>Top measured bitstrings — XY p={bestXY.reps}</h4>
-        <table className="tbl small mono">
-          <thead><tr><th>bitstring (q11…q0)</th><th>count</th><th>assignment</th><th>objective</th></tr></thead>
-          <tbody>{bestXY.top_samples.slice(0, 8).map((t) => (
-            <tr key={t.bitstring} className={t.energy !== null && Math.abs(t.energy - s.exact_energy) < 1e-6 ? 'good' : ''}>
-              <td>{t.bitstring}</td><td>{t.count}</td><td>{t.assignment ? t.assignment.map((x) => x + 1).join(',') : 'infeasible'}</td><td>{fmt(t.energy, 0)}</td></tr>
-          ))}</tbody>
-        </table>
-        <p className="muted">Exact optimum: {s.methods[exactIdx].assignment.map((x) => x + 1).join(',')} (objective {fmt(s.exact_energy, 0)})</p>
-      </div>
-    </div>
-  )
-}
-
-function LargeTab({ data, network }) {
-  const L = data.large
-  const [sel, setSel] = useState(L.methods.length - 1)
-  const m = L.methods[sel]
-  return (
-    <div className="split">
-      <div className="left"><MapView network={network} instance={L} assignment={m.assignment} /></div>
-      <div className="right">
-        <h3>City-scale instance — 12 groups (two waves) × 3 journeys = 36 binary variables</h3>
-        <p className="muted">Too large for one simulated circuit (2³⁶ amplitudes). Groups are clustered by shared buses/shelters into ≤12-qubit sub-problems, each re-optimised with XY-QAOA while the others are fixed (block-coordinate descent). Exact reference: brute force over {Math.pow(3, 12).toLocaleString()} assignments.</p>
-        <MethodTable methods={L.methods} selected={sel} onSelect={setSel} />
-        <h4>Clusters (by coupling strength)</h4>
-        <div className="assign">{L.clusters.map((c, i) => (
-          <div key={i} className="assign-row"><b>C{i + 1}</b>&nbsp;{c.map((g) => `G${g + 1} ${L.groups[g].origin}${L.groups[g].dep ? '(wave 2)' : ''}`).join(', ')}</div>
-        ))}</div>
-        <div className="sub">Objective after each cluster solve (green dashed = exact optimum)</div>
-        <LineChart xLabel="cluster solve step" yLabel="objective" series={[
-          { name: 'clustered QAOA', color: '#2563eb', points: L.trace.map((t) => [t.step, t.energy]) },
-          { name: 'exact', color: '#059669', dash: '5 4', points: L.trace.map((t) => [t.step, L.exact_energy]) },
-        ]} />
-        <table className="tbl small">
-          <thead><tr><th>Step</th><th>Cluster</th><th>Sub-problem P(opt)</th><th>Accepted</th><th>Objective</th></tr></thead>
-          <tbody>{L.trace.slice(1).map((t) => (
-            <tr key={t.step}><td>{t.step}</td><td>{t.cluster.map((g) => 'G' + (g + 1)).join(' ')}</td><td>{fmt(100 * t.p_optimal_sub, 1)}%</td><td>{t.accepted ? '✔' : '✘'}</td><td>{fmt(t.energy, 0)}</td></tr>
-          ))}</tbody>
-        </table>
-        <h4>Selected: {m.method}</h4>
-        <Assignment instance={L} assignment={m.assignment} />
-      </div>
-    </div>
-  )
-}
-
-function GroverTab({ data }) {
-  const rows = data.grover
-  return (
-    <div className="single">
-      <h3>Dürr–Høyer quantum minimum search inside RAPTOR's label selection</h3>
-      <p className="muted">RAPTOR's last step picks the best of N candidate arrival labels. Classically: N−1 comparisons. Dürr–Høyer (Grover + BBHT schedule) needs O(√N) oracle queries. We count <b>oracle queries</b>, not wall-clock time — on a simulator the quantum version is far slower. The oracle is a diagonal phase gate built from the known labels (no QRAM), so this shows query complexity only.</p>
-      <table className="tbl">
-        <thead><tr><th>N labels</th><th>Qubits</th><th>Classical comparisons</th><th>Quantum queries to min (mean)</th><th>median</th><th>√N</th><th>Success rate</th></tr></thead>
-        <tbody>{rows.map((r) => (
-          <tr key={r.N}><td>{r.N}</td><td>{r.qubits}</td><td>{r.classical_comparisons}</td><td>{fmt(r.mean_queries_to_min)}</td><td>{fmt(r.median_queries_to_min)}</td><td>{fmt(r.sqrtN)}</td><td>{fmt(100 * r.success_rate, 0)}%</td></tr>
-        ))}</tbody>
+    <div className="results">
+      <table>
+        <thead><tr><th /><th>Time</th><th>Nodes</th><th>Order work</th><th>Drive</th></tr></thead>
+        <tbody>
+          {rows.map(({ m, r }) => (
+            <tr key={m.key}>
+              <td><span className="swatch" style={{ background: m.color }} />{m.short}</td>
+              <td className={r.total_ms === fastest ? 'win' : ''}>{fmtMs(r.total_ms)}</td>
+              <td>{(r.settled / 1000).toFixed(0)}k</td>
+              <td>{work(m.key, r)}</td>
+              <td>{r.optimal ? fmtMin(r.order.cost) : <span className="miss">{fmtMin(r.order.cost)}</span>}</td>
+            </tr>
+          ))}
+        </tbody>
       </table>
-      <div style={{ maxWidth: 640 }}>
-        <LineChart width={520} height={220} xLabel="N (number of labels)" yLabel="queries / comparisons" series={[
-          { name: 'classical N−1', color: '#dc2626', points: rows.map((r) => [r.N, r.classical_comparisons]) },
-          { name: 'Dürr–Høyer (sim)', color: '#2563eb', points: rows.map((r) => [r.N, r.mean_queries_to_min]) },
-          { name: '√N', color: '#94a3b8', dash: '4 4', points: rows.map((r) => [r.N, r.sqrtN]) },
-        ]} />
-      </div>
+      {result.orders > 1 ? <p className="note">
+        All three return the same {fmtMin(best)} route. Parallel search is fastest on this CPU. The quantum time is a
+        classical simulation of {result.quantum.order.qubits} qubits; what it shows is the work: Grover held the best
+        of {result.orders.toLocaleString()} orders after {result.quantum.order.queries_to_min ?? '–'} oracle queries,
+        where brute force checks all {result.orders.toLocaleString()}.
+      </p> : <p className="note">With a single destination there is no visit order to choose, so this compares only the road searches. Add more stops to give the quantum stage work.</p>}
+    </div>
+  )
+}
+
+function Itinerary({ result, stops }) {
+  const perm = result.parallel.order.perm
+  const seq = [0, ...perm, ...(result.return_to_start ? [0] : [])]
+  return (
+    <ol className="itinerary">
+      {seq.map((s, i) => (
+        <li key={i}>
+          <span className={`tag${s === 0 ? ' depot' : ''}`}>{stopLetter(s)}</span>
+          <span className="it-name">{stops[s]?.name}</span>
+          {i > 0 && <span className="it-leg">+{fmtMin(result.leg_cost[seq[i - 1]][s])}</span>}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function Router({ info }) {
+  const [stops, setStops] = useState([])
+  const [ret, setRet] = useState(false)
+  const [result, setResult] = useState(null)
+  const [phase, setPhase] = useState('idle') // idle | solving | playing | done
+  const [slow, setSlow] = useState(false)
+  const [error, setError] = useState('')
+  const maps = useRef({})
+  const syncing = useRef(false)
+  const raf = useRef(0)
+  const places = info?.places ?? []
+  const max = info?.max_stops ?? 7
+  const busy = phase === 'solving' || phase === 'playing'
+
+  useEffect(() => { METHODS.forEach((m) => maps.current[m.key]?.setStops(stops)) }, [stops])
+
+  const addStop = useCallback((lat, lon, name) => {
+    setStops((s) => (s.length >= max ? s : [...s, { lat, lon, name: name ?? placeName(places, lat, lon) }]))
+    setResult(null); setPhase('idle'); setError('')
+    METHODS.forEach((m) => maps.current[m.key]?.clear())
+  }, [max, places])
+
+  const onMapClick = useCallback((ll) => { if (!busy) addStop(ll.lat, ll.lng) }, [addStop, busy])
+  const onMove = useCallback((key, c, z) => {
+    if (syncing.current) return
+    syncing.current = true
+    METHODS.forEach((m) => { if (m.key !== key) maps.current[m.key]?.syncTo(c, z) })
+    syncing.current = false
+  }, [])
+
+  const removeStop = (i) => { setStops((s) => s.filter((_, j) => j !== i)); setResult(null); setPhase('idle'); METHODS.forEach((m) => maps.current[m.key]?.clear()) }
+  const loadExample = () => {
+    const s = EXAMPLE.map((n) => places.find((p) => p.name === n)).filter(Boolean).map((p) => ({ lat: p.lat, lon: p.lon, name: p.name }))
+    setStops(s); setResult(null); setPhase('idle'); setError('')
+    METHODS.forEach((m) => { maps.current[m.key]?.clear(); maps.current[m.key]?.fit(s) })
+  }
+
+  const play = (data) => {
+    cancelAnimationFrame(raf.current)
+    const slowest = Math.max(...METHODS.map((m) => data[m.key].total_ms))
+    const order = [...METHODS].sort((a, b) => data[a.key].total_ms - data[b.key].total_ms)
+    const rank = Object.fromEntries(order.map((m, i) => [m.key, ['1st', '2nd', '3rd'][i]]))
+    const T = { scale: RACE_MS / slowest, act1: RACE_MS, act2: ORDER_MS, act3: ROUTE_MS, rank }
+    METHODS.forEach((m) => maps.current[m.key].load(data[m.key], data))
+    const end = T.act1 + T.act2 + T.act3
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) { METHODS.forEach((m) => maps.current[m.key].frame(end, T)); setPhase('done'); return }
+    setPhase('playing')
+    const t0 = performance.now()
+    const tick = (now) => {
+      const t = Math.min(end, now - t0)
+      METHODS.forEach((m) => maps.current[m.key].frame(t, T))
+      if (t < end) raf.current = requestAnimationFrame(tick)
+      else setPhase('done')
+    }
+    raf.current = requestAnimationFrame(tick)
+  }
+
+  const run = async () => {
+    if (stops.length < 2 || busy) return
+    setPhase('solving'); setError(''); setResult(null)
+    const timer = setTimeout(() => setSlow(true), SPINNER_DELAY_MS)
+    METHODS.forEach((m) => { maps.current[m.key].clear(); maps.current[m.key].fit(stops) })
+    try {
+      const r = await fetch('/api/solve', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stops: stops.map(({ lat, lon }) => ({ lat, lon })), return_to_start: ret }),
+      })
+      if (!r.ok) throw new Error((await r.json()).detail?.toString() || r.statusText)
+      const data = await r.json()
+      setResult(data)
+      play(data)
+    } catch (e) {
+      setError(`Could not plan the route: ${e.message}. Is the backend running (uv run qroute-server)?`)
+      setPhase('idle')
+    } finally {
+      clearTimeout(timer); setSlow(false)
+    }
+  }
+
+  return (
+    <div className="router">
+      <aside className="panel">
+        <div className="brand">
+          <h1>Convoy router</h1>
+          <p className="sub">Relief convoy planning on Karachi's real road network: {info ? `${info.nodes.toLocaleString()} OSM road nodes` : 'loading…'}</p>
+        </div>
+
+        <section className="block">
+          <div className="block-head">
+            <h2>Stops</h2>
+            <span className="muted">{stops.length}/{max}</span>
+          </div>
+          {stops.length === 0 && (
+            <p className="empty">Click any map to place the depot <span className="tag depot">A</span>, then each shelter the convoy must reach. The solvers choose the order.</p>
+          )}
+          <ol className="stops">
+            {stops.map((s, i) => (
+              <li key={i}>
+                <span className={`tag${i === 0 ? ' depot' : ''}`}>{stopLetter(i)}</span>
+                <span className="stop-name">{s.name}<small>{i === 0 ? 'Depot (start)' : 'Delivery stop'}</small></span>
+                <button className="icon-btn" aria-label={`Remove stop ${stopLetter(i)}`} disabled={busy} onClick={() => removeStop(i)}>
+                  <svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="row">
+            <select aria-label="Add a Karachi place" value="" disabled={busy || stops.length >= max}
+              onChange={(e) => { const p = places.find((x) => x.name === e.target.value); if (p) addStop(p.lat, p.lon, p.name) }}>
+              <option value="">Add a place…</option>
+              {places.map((p) => <option key={p.name} value={p.name}>{p.name}{p.kind === 'shelter' ? ' (shelter)' : ''}</option>)}
+            </select>
+            <button className="text-btn" disabled={busy} onClick={loadExample}>Use example</button>
+          </div>
+          <label className="check"><input type="checkbox" checked={ret} disabled={busy} onChange={(e) => setRet(e.target.checked)} /> Return to depot</label>
+        </section>
+
+        <button className="primary" disabled={stops.length < 2 || busy} onClick={run}>
+          {phase === 'solving' && slow ? 'Running three solvers…' : phase === 'playing' ? 'Replaying…' : result ? 'Plan again' : 'Plan route'}
+        </button>
+        {stops.length === 1 && <p className="hint">Add at least one more stop.</p>}
+        {error && <p className="error" role="alert">{error}</p>}
+
+        {result && (
+          <section className={`block reveal${phase === 'done' ? ' on' : ''}`}>
+            <h2>Route</h2>
+            <Itinerary result={result} stops={stops} />
+            <h2>Comparison</h2>
+            <Results result={result} />
+            <button className="text-btn" onClick={() => play(result)} disabled={phase === 'playing'}>Replay</button>
+          </section>
+        )}
+      </aside>
+
+      <main className="races">
+        {METHODS.map((m, i) => (
+          <RaceMap key={m.key} method={m} ref={(r) => { maps.current[m.key] = r }} onMapClick={onMapClick}
+            onMove={onMove} attribution={i === METHODS.length - 1} />
+        ))}
+        <div className="legend">
+          <span><i className="dot" />searched road nodes</span>
+          <span><i className="ln faint" />order being checked</span>
+          <span><i className="ln" />best so far</span>
+          <span><i className="ln" style={{ background: ROUTE }} />chosen route</span>
+        </div>
+      </main>
     </div>
   )
 }
 
 export default function App() {
-  const [data, setData] = useState(null)
-  const [tab, setTab] = useState('small')
-  useEffect(() => { fetch('./results.json').then((r) => r.json()).then(setData) }, [])
-  const net = data?.network
-  const stats = useMemo(() => net && `${net.stops.length} stops · ${net.num_lines} lines · ${net.num_routes} RAPTOR routes · ${net.num_trips} timetabled trips · ${net.damaged.length} flood-damaged segments`, [net])
-  if (!data) return <div className="loading">Loading results.json … (run <code>uv run qroute-demo</code> in /backend first)</div>
+  const [view, setView] = useState('router')
+  const [info, setInfo] = useState(null)
+  useEffect(() => { fetch('/api/info').then((r) => r.json()).then(setInfo).catch(() => setInfo(null)) }, [])
   return (
-    <div className="app">
-      <header>
-        <div>
-          <h1>Quantum Evacuation Routing — Karachi storm-surge scenario</h1>
-          <div className="muted">{stats}</div>
-        </div>
-        <nav>
-          {[['small', '12-qubit QAOA vs exact'], ['large', 'City-scale (clustered)'], ['grover', 'Grover min-search']].map(([k, l]) => (
-            <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
-          ))}
-        </nav>
-      </header>
-      <div className="pipeline">
-        <span>① Synthetic transit network on real map</span>→<span>② RAPTOR: Pareto journeys per group (classical, exact)</span>→<span>③ QUBO: time + bus crowding + shelter load</span>→<span>④ QAOA on Qiskit Aer (penalty vs XY-mixer)</span>→<span>⑤ Compare to brute-force / greedy / annealing</span>
-      </div>
-      {tab === 'small' && <SmallTab data={data} network={net} />}
-      {tab === 'large' && <LargeTab data={data} network={net} />}
-      {tab === 'grover' && <GroverTab data={data} />}
-    </div>
+    <>
+      <nav className="views">
+        <button className={view === 'router' ? 'on' : ''} onClick={() => setView('router')}>Convoy router</button>
+        <button className={view === 'study' ? 'on' : ''} onClick={() => setView('study')}>Evacuation QAOA study</button>
+      </nav>
+      {view === 'router' ? <Router info={info} /> : <Study />}
+    </>
   )
 }

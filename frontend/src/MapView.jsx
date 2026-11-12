@@ -20,7 +20,7 @@ export default function MapView({ network, instance, assignment, showAllOptions 
     <MapContainer center={[24.875, 67.08]} zoom={12} className="map" scrollWheelZoom>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {network.lines.map((l) => (
         <Polyline key={l.name} positions={l.path} pathOptions={{ color: '#94a3b8', weight: 3, opacity: 0.7 }}>

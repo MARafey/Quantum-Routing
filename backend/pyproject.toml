@@ -7,10 +7,12 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.162.5",
     "numpy>=2.5.4",
     "qiskit>=2.6.2",
     "qiskit-aer>=0.18.2",
     "scipy>=1.18.1",
+    "uvicorn>=0.54.0",
 ]
 
 [build-system]
@@ -27,3 +29,4 @@ dev = [
 [project.scripts]
 qroute-demo = "qroute.run_demo:main"
 qroute-report = "qroute.report:main"
+qroute-server = "qroute.server:main"

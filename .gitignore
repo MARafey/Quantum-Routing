@@ -10,3 +10,8 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Raw Overpass download (rebuilt by roadgraph.py); compact graph is committed
+backend/data/osm_raw.json
+# Raw browser recordings (converted to mp4/gif)
+docs/media/*.webm
