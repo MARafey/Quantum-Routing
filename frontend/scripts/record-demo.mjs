@@ -22,10 +22,10 @@ const shot = (name) => page.screenshot({ path: join(OUT, name) })
 const add = async (name) => { await page.selectOption('select[aria-label="Add a Karachi place"]', name); await wait(700) }
 const runAndWatch = async (snap) => {
   await page.getByRole('button', { name: /Plan route|Plan again/ }).click()
-  await page.getByRole('button', { name: 'Replay' }).waitFor({ timeout: 60000 }) // results arrived
+  await page.getByRole('button', { name: 'Replay', exact: true }).waitFor({ timeout: 60000 }) // results arrived
   await wait(3500); if (snap) await shot(snap + '_race.png')
   await wait(4000); if (snap) await shot(snap + '_orders.png')
-  await page.getByRole('button', { name: 'Plan again' }).waitFor({ timeout: 30000 }) // playback finished
+  await page.getByRole('button', { name: 'Plan again', exact: true }).waitFor({ timeout: 30000 }) // playback finished
   await wait(1500); if (snap) await shot(snap + '_done.png')
 }
 

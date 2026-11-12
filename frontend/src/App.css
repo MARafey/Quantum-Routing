@@ -101,3 +101,4 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
   .race { border-right: 0; border-bottom: 1px solid var(--line); }
 }
 .race-map .leaflet-tile-pane { filter: grayscale(1) contrast(0.92) brightness(1.04); }
+.panel > * { flex-shrink: 0; }
