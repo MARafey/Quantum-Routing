@@ -82,7 +82,15 @@ class QAOAResult:
 
 
 def run_qaoa(inst: Instance, reps: int = 2, variant: str = "xy", restarts: int = 4, maxiter: int = 150,
-             shots: int = 4096, seed: int = 11) -> QAOAResult:
+             shots: int = 4096, seed: int = 11, cvar_alpha: float = 0.2) -> QAOAResult:
+    """Train QAOA angles with COBYLA, then sample on Aer.
+
+    The training loss is CVaR_alpha of the energy distribution (Barkoutsos et al.,
+    "Improving Variational Quantum Optimization using CVaR", Quantum 4, 256, 2020):
+    the mean energy of the best ``alpha`` fraction of outcomes. alpha=1 gives the
+    plain expectation value. CVaR rewards concentrating probability on good
+    solutions, which is what we sample at the end.
+    """
     t0 = time.perf_counter()
     rng = np.random.default_rng(seed)
     qc, _, _ = build_ansatz(inst, reps, variant)
@@ -97,6 +105,8 @@ def run_qaoa(inst: Instance, reps: int = 2, variant: str = "xy", restarts: int =
     else:
         E = energies(inst.Q, inst.const, X)
     E = E / np.abs(E).max()
+    order = np.argsort(E)
+    E_sorted = E[order]
 
     evals = 0
     history: list[float] = []
@@ -105,8 +115,13 @@ def run_qaoa(inst: Instance, reps: int = 2, variant: str = "xy", restarts: int =
         nonlocal evals
         evals += 1
         bound = tqc.assign_parameters(dict(zip(params, theta)))
-        probs = Statevector(bound).probabilities()
-        val = float(probs @ E)
+        probs = Statevector(bound).probabilities()[order]
+        if cvar_alpha >= 1:
+            val = float(probs @ E_sorted)
+        else:
+            cum = np.cumsum(probs)
+            w = np.clip(cvar_alpha - (cum - probs), 0, probs)  # mass of each state inside the alpha-tail
+            val = float(w @ E_sorted / cvar_alpha)
         history.append(val)
         return val
 

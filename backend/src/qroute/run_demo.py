@@ -132,7 +132,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
-    restarts = 2 if args.quick else 4
+    restarts = 2 if args.quick else 3
     reps_list = [1, 2] if args.quick else [1, 2, 3]
     t_start = time.perf_counter()
     net = build_network()
