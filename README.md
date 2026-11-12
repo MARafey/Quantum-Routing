@@ -63,10 +63,18 @@ A `results.json` from our full run is already committed, so the dashboard works 
 
 See `backend/results/run_log.txt` and the report for the full numbers.
 
-- XY-mixer QAOA: **100 % feasible samples** at every depth vs ~30–50 % for penalty QAOA, and the probability of sampling the exact optimum is several times a random feasible guess.
-- Coordinated routing beats uncoordinated "everyone takes their fastest RAPTOR journey" on both objective and peak bus load.
-- Clustered XY-QAOA reaches the exact optimum of the 36-variable instance; greedy does not.
-- Dürr–Høyer finds the minimum label in fewer oracle queries than the N−1 classical comparisons, growing roughly like √N.
+12-qubit instance (4 groups × 3 journeys, 81 feasible assignments, 4096 shots):
+
+| QAOA | P(feasible) | P(optimal) | Approx. ratio |
+|---|---|---|---|
+| Penalty p=1 / 2 / 3 | 39% / 58% / 98% | 0.6% / 0.7% / 1.3% | 0.52 |
+| **XY-mixer p=1 / 2 / 3** | **100% / 100% / 100%** | **15.1% / 6.7% / 16.8%** | 0.79–0.86 |
+
+A random feasible guess finds the optimum 1.2% of the time. The coordinated optimum is 1.44% better than uncoordinated routing (everyone taking their fastest RAPTOR journey).
+
+36-variable city instance: **clustered XY-QAOA reaches the exact optimum (0.00% gap)**. Greedy is 1.61% worse, and even worse than no coordination (1.03%).
+
+Dürr–Høyer over RAPTOR labels: about 25 oracle queries to reach the minimum at N=64, against 63 classical comparisons (query count, not time).
 
 ## Credits
 

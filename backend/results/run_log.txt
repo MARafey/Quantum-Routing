@@ -1,0 +1,31 @@
+[1/4] Small instance (4 groups x 3 options = 12 qubits)
+   penalty p=1: P(feasible)=0.392 P(opt)=0.006 approx=0.524 depth=48 cx=46 37.7s
+   penalty p=2: P(feasible)=0.583 P(opt)=0.007 approx=0.525 depth=68 cx=92 98.0s
+   penalty p=3: P(feasible)=0.979 P(opt)=0.013 approx=0.522 depth=97 cx=138 80.2s
+   xy      p=1: P(feasible)=1.000 P(opt)=0.151 approx=0.787 depth=75 cx=86 49.2s
+   xy      p=2: P(feasible)=1.000 P(opt)=0.067 approx=0.863 depth=109 cx=156 80.4s
+   xy      p=3: P(feasible)=1.000 P(opt)=0.168 approx=0.828 depth=155 cx=226 54.6s
+   Independent RAPTOR (no coordination)     E=   27458.2 gap=  1.44%  [0, 0, 0, 0]
+   Greedy                                   E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   Simulated annealing                      E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   Exact (brute force)                      E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   QAOA penalty p=1                         E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   QAOA penalty p=2                         E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   QAOA penalty p=3                         E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   QAOA XY-mixer p=1                        E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   QAOA XY-mixer p=2                        E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+   QAOA XY-mixer p=3                        E=   27068.1 gap=  0.00%  [0, 1, 0, 1]
+[2/4] Large instance (12 groups x 3 options = 36 variables, clustered QAOA)
+   Independent RAPTOR (no coordination)     E=   69918.3 gap=  1.03%
+   Greedy                                   E=   70317.2 gap=  1.61%
+   Simulated annealing                      E=   69204.9 gap=  0.00%
+   Exact (brute force)                      E=   69204.9 gap=  0.00%
+   Clustered XY-QAOA                        E=   69204.9 gap=  0.00%
+[3/4] Dürr–Høyer minimum search over RAPTOR labels
+   N=  8 qubits=3 classical=  7 quantum mean queries to min=4.9 success=1.00
+   N= 16 qubits=4 classical= 15 quantum mean queries to min=9.975 success=1.00
+   N= 32 qubits=5 classical= 31 quantum mean queries to min=15.55 success=1.00
+   N= 64 qubits=6 classical= 63 quantum mean queries to min=24.55 success=1.00
+[4/4] Writing results
+   wrote C:\Users\Hp\Desktop\QuantumRouting\backend\results\results.json
+   wrote C:\Users\Hp\Desktop\QuantumRouting\frontend\public\results.json

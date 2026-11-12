@@ -314,8 +314,14 @@ def main() -> None:
            "the classical optimiser cost grows with depth.", "Low P(optimal).")
     bullet(doc, f" The XY mixer needs more two-qubit gates (CNOTs {xy[-1]['cx_count']} vs {pen[-1]['cx_count']} at "
            f"p={xy[-1]['reps']}). On noisy hardware that would reduce fidelity, and we did not run a noise model.", "Circuit cost.")
-    bullet(doc, " The penalty strength A was set by a heuristic (1.5× max variable influence). Penalty QAOA is sensitive to "
-           "this choice and still put about half of its samples on infeasible assignments.", "Penalty tuning.")
+    bullet(doc, " The penalty strength A was set by a heuristic (1.5× max variable influence). Penalty QAOA's feasibility "
+           f"depended strongly on depth ({f(100 * min(r['p_feasible'] for r in pen), 0)}–"
+           f"{f(100 * max(r['p_feasible'] for r in pen), 0)}% feasible), but even when feasible its samples were spread "
+           f"across poor assignments (approximation ratio ≈{f(pen[-1]['approx_ratio'], 2)}): the large penalty dominates the "
+           "energy scale and flattens the real objective.", "Penalty tuning.")
+    bullet(doc, " The Dürr–Høyer figures count queries until the true minimum is first held. The algorithm itself cannot "
+           "detect that moment and runs to its O(√N) budget (22.5√N + 1.4 log²N), which at these small N exceeds N. The "
+           "asymptotic advantage only becomes practical at much larger N.", "Query accounting.")
     bullet(doc, " The Grover oracle is a diagonal phase gate built from labels already known classically. A real advantage "
            "would need quantum-accessible memory (QRAM) and a reversible comparator, which we did not build. The √N result "
            "is about query complexity only.", "Oracle construction.")
