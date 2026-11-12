@@ -2,126 +2,66 @@
 
 **Qiskit Quantum Optimization Challenge · Domain 2: Disaster Response**
 
-A cyclone storm surge floods Karachi's coastal belt. Relief convoys must reach several shelters, and evacuees must be moved inland without overloading the same buses and shelters. This repository contains three parts that share one codebase:
+When floods or an earthquake hit Pakistan, relief leaves a few logistics hubs and has to reach many stricken towns spread across the country. Each convoy's stop order, and which hub serves which town, decide how long the **last** town waits for aid. With a few hubs and ten towns there are millions of possible plans.
 
-1. **Convoy router** (interactive). Pick a depot and any number of shelters on the real OpenStreetMap road network of Karachi. Three solvers plan the delivery order and race each other live: **brute force**, **parallel classical**, and **quantum (Grover minimum search, simulated in Qiskit)**.
-2. **Evacuation QAOA study**. RAPTOR transit routing combined with QAOA (penalty vs XY-mixer) assigns evacuee groups to bus journeys so that travel time, bus crowding and shelter overload are jointly minimised. Results are checked against exact brute force.
+The app lets you place hubs and sites on a map of Pakistan, or generate a random scenario. It then finds the best plan three ways and compares how much of the plan space each had to examine:
 
-3. **Country-scale disasters.** Several convoys from several hubs, with many flood- or quake-hit sites across a country, or across borders. The number of possible plans explodes into the millions. This part shows where quantum search matters: brute force must evaluate every plan, while Grover-based minimum search needs about √N oracle queries.
+| Method | How it finds the best plan |
+|---|---|
+| **Brute force** | Evaluates every possible plan (vectorised NumPy) |
+| **Parallel** | Same exhaustive evaluation, split across 8 worker processes |
+| **Quantum (simulated)** | **Dürr–Høyer minimum finding**: Grover search with the BBHT schedule over an index register of ⌈log₂ N⌉ qubits (21–22 qubits here) |
 
-> Simulator proof of concept. **No quantum speedup is claimed.** On a CPU the quantum stage is a classical simulation, so its wall-clock time is shown honestly next to the hardware-independent work counts.
+> Simulator proof of concept. **No quantum speedup in wall-clock time is claimed.** The quantum stage runs as a classical simulation, so its time is shown honestly. Its advantage is in **coverage**: the share of all possible plans it had to examine before holding the optimum.
 
-## Country-scale disasters: where quantum search pays off
+## Demo
 
-![Pakistan floods: three convoys from Karachi, Lahore and Peshawar; Grover search over 1.8 million plans](docs/media/country_scale_demo.gif)
+![Random stops across Pakistan, run, and the comparison of time and coverage](docs/media/planner_demo.gif)
 
-▶ **[Full video of all three cases (MP4, 45 s)](docs/media/country_scale_demo.mp4)**
+▶ **[Full video (MP4, 79 s)](docs/media/planner_demo.mp4)**: three random scenarios with 1, 2 and 3 convoys.
 
-Small problems (one convoy, a handful of stops) are trivial for a classical computer. Disasters are not small. Relief must be split across several hubs and many sites, so the number of plans grows as N = n! · C(n+k−1, k−1) for n sites and k convoys. Each plan assigns every site to a convoy and fixes the visiting order. The objective is the **makespan**: the time until the *last* site receives aid.
+| Random stops | Quantum search flashing candidate plans | Result (2 convoys) | Result (3 convoys) |
+|---|---|---|---|
+| ![](docs/media/planner_stops.png) | ![](docs/media/planner_search.png) | ![](docs/media/planner_result_2.png) | ![](docs/media/planner_result_3.png) |
 
-Road travel times come from the open [OSRM](https://project-osrm.org/) routing engine on OpenStreetMap data, so the solver works in any country. Responses are cached in `backend/data/osrm_cache/` for reproducibility.
+Results from the recorded runs (all three methods found the same optimal plan every time):
 
-| Case (real locations) | Convoys × sites | Possible plans N | Qubits | Brute force evaluates | Quantum held the optimum after | Work ratio | Break-even query time* |
-|---|---|---|---|---|---|---|---|
-| Sindh floods 2022 (Karachi depot) | 1 × 10 | 3,628,800 | 22 | 3,628,800 plans | **5,416 queries** | 670× less | 275 µs |
-| Pakistan floods: Karachi, Lahore, Peshawar hubs | 3 × 8 | 1,814,400 | 21 | 1,814,400 plans | **1,762 queries** | 1,030× less | 31 µs |
-| Türkiye–Syria earthquake 2023 (cross-border) | 2 × 9 | 3,628,800 | 22 | 3,628,800 plans | **7,892 queries** | 460× less | 67 µs |
+| Scenario | Possible plans N | Brute force | Parallel | Quantum (simulated) | Quantum coverage | Less search |
+|---|---|---|---|---|---|---|
+| 1 hub (Hyderabad) + 10 sites | 3,628,800 | 3.65 s · 100% | 1.16 s · 100% | 1.38 s · 7,753 queries | **0.21%** | **468×** |
+| 2 hubs (Lahore, Karachi) + 9 sites | 3,628,800 | 5.24 s · 100% | 1.14 s · 100% | 10.31 s · 8,326 queries | **0.23%** | **436×** |
+| 3 hubs (Faisalabad, Quetta, Karachi) + 8 sites | 1,814,400 | 1.62 s · 100% | 0.42 s · 100% | 4.52 s · 5,140 queries | **0.28%** | **353×** |
 
-All three methods (brute force, parallel brute force on 8 processes, quantum) find the same optimal plan in every case.
+Times were measured while the screen was being recorded, so they are slower than unrecorded runs. Quantum time is the cost of simulating the search on a CPU, not quantum hardware time.
 
-\*Break-even query time = brute-force wall-clock ÷ quantum queries. On quantum hardware Grover search would beat this CPU if one oracle query (evaluating a plan's cost reversibly) took less than this.
+## Why quantum matters at disaster scale
 
-**As the disaster grows**, the gap widens with the square root of N. At 20 sites, brute force faces about 10¹⁸ to 10²¹ plans, while Grover would need about 10⁹ to 10¹⁰ queries (the scaling chart in the app). For a single convoy, Held–Karp dynamic programming (2ⁿ·n²) is the stronger classical baseline and is shown for comparison.
+- **The plan space explodes.** For n sites and k convoys, N = n! · C(n+k−1, k−1): 1.8–3.6 million plans for 8–10 sites, and about 10¹⁸–10²¹ for 20 sites.
+- **Classical brute force must check all N plans.** Grover-based minimum search needs about √N oracle queries. In the runs above it held the optimum after examining 0.2–0.3% of the plans, about 350–470× less search, and the gap grows with the square root of N.
+- **Random scenarios are built to show this regime.** "Random stops" draws 1–3 hubs from different provinces and 8–10 sites spread across at least 3 regions. It only produces configurations with 1.5–4 million plans.
+- **Break-even.** Grover would beat this CPU on hardware if one oracle query (evaluating a plan's cost reversibly) took less than roughly brute-force time ÷ queries. That is about 300–630 µs in these runs.
 
-**How the quantum part is simulated.** Each case has 21–22 qubits and thousands of Grover iterations. We simulate the Dürr–Høyer algorithm (Grover search with the BBHT schedule) using the **exact closed-form Grover measurement statistics**: P(marked) = sin²((2j+1)θ) with sin θ = √(M/2^q), and outcomes uniform within the marked and unmarked sets. This equals the circuit's output distribution, and a unit test checks it against Qiskit statevector simulation of the real circuit. Small instances (≤12 qubits, e.g. custom requests via `POST /api/solve-geo`) run the actual Qiskit circuit.
+**How the quantum part is simulated.** At 21–22 qubits with thousands of Grover iterations, we use the **exact closed-form Grover measurement statistics**: P(marked) = sin²((2j+1)θ) with sin θ = √(M/2^q), and outcomes uniform within the marked and unmarked sets. This is exactly the circuit's output distribution, and a unit test checks it against Qiskit statevector simulation of the real Grover circuit. Instances of 12 qubits or fewer run the actual Qiskit circuit.
 
 **What this does not claim:**
-- The oracle uses plan costs computed classically.
-- Building that oracle as a reversible circuit is the open engineering problem.
+- The oracle uses plan costs computed classically. Building it as a reversible circuit is the open engineering problem.
 - Error-correction overheads may erase quadratic speedups on early fault-tolerant machines ([Babbush et al., PRX Quantum 2021](https://arxiv.org/abs/2011.04149v1)).
-- Held–Karp overtakes plain Grover-over-tours for a single convoy beyond about 20 sites. Hybrid Grover + dynamic-programming algorithms reach O*(1.728ⁿ), beating Held–Karp's 2ⁿ ([Ambainis et al. 2019](https://ar5iv.labs.arxiv.org/html/1807.05209)). For quantum TSP search see also [arXiv 2405.07129](https://arxiv.org/html/2405.07129v3) and [arXiv 2502.08853](https://arxiv.org/pdf/2502.08853).
+- For a single convoy, Held–Karp dynamic programming (2ⁿ·n²) is the strongest exact classical method and overtakes plain Grover-over-tours beyond about 20 sites.
+- Hybrid Grover + dynamic programming reaches O*(1.728ⁿ) ([Ambainis et al.](https://ar5iv.labs.arxiv.org/html/1807.05209)). See also quantum TSP search in [arXiv 2405.07129](https://arxiv.org/html/2405.07129v3) and [arXiv 2502.08853](https://arxiv.org/pdf/2502.08853).
 
-| Sindh, 1 convoy | Pakistan, 3 hubs | Türkiye–Syria, 2 hubs |
-|---|---|---|
-| ![](docs/media/country_sindh.png) | ![](docs/media/country_pakistan_3hubs.png) | ![](docs/media/country_turkiye_syria.png) |
+## Problem formulation
 
-Re-run the cases with `cd backend && uv run qroute-cases`. It writes `backend/results/cases/*.json` and `frontend/public/cases/*.json`.
-
-## Convoy router demo (Karachi, live road search)
-
-![Convoy router: depot plus five shelters, three solvers racing on Karachi's OSM road network](docs/media/convoy_router_demo.gif)
-
-▶ **[Full walkthrough video (MP4, 54 s)](docs/media/convoy_router_demo.mp4)**: an A→B run, then a six-stop convoy entered from the place list and by clicking the map.
-
-| Stops entered (place list + map click) | The race: each search spreads at its measured speed |
-|---|---|
-| ![Input](docs/media/02_multi_input.png) | ![Race](docs/media/03_multi_race.png) |
-| **Chosen route, identical for all three** | **Itinerary and comparison** |
-| ![Done](docs/media/03_multi_done.png) | ![Results](docs/media/04_results.png) |
-
-### What the convoy router shows
-
-Each panel replays one solver on the same map:
-
-| Solver | Road search (phase 1) | Visit order (phase 2) |
-|---|---|---|
-| **Brute force** | Full Dijkstra from every stop, one after another, over all 55,758 road nodes | Every one of the (n−1)! visit orders is evaluated |
-| **Parallel classical** | Dijkstra from all stops **at the same time** on a pool of worker processes, each stopping once the other stops are reached | Held–Karp dynamic programming (exact) |
-| **Quantum (simulated)** | Same parallel road search | **Dürr–Høyer minimum finding**: Grover search with the BBHT schedule over an index register of ⌈log₂ (n−1)!⌉ qubits, simulated with Qiskit |
-
-The replay has three acts:
-1. **The race.** Each panel's search dots spread at a speed proportional to its measured wall-clock time, and its stopwatch stops at the real value.
-2. **Visit order.** Brute force flips through every candidate order, Held–Karp counts its DP states, and Grover shows each measured order while it keeps the best so far.
-3. **The route.** The chosen route draws itself.
-
-Example run from the video (depot at Saddar plus 5 stops, 120 possible orders):
-
-| | Time | Road nodes searched | Order work | Drive time |
-|---|---|---|---|---|
-| Brute force | 3.43 s | 335k | 120 orders evaluated | 50.0 min |
-| Parallel classical | **0.85 s** | 249k | 80 DP states | 50.0 min |
-| Quantum (simulated) | 2.85 s | 249k | optimum held after **55 oracle queries** | 50.0 min |
-
-All three find the same optimal route. Parallel classical is fastest in wall-clock time. The quantum stage is slow because it is simulated, but it reached the optimum after fewer oracle queries (55) than the 120 orders brute force must check. Grover's query count grows with √N against N, which is the scaling the method offers. Dürr–Høyer cannot detect that it has the minimum, so it runs to its full O(√N) query budget; at this size the full budget (317 queries) is still larger than N.
-
-## Repository layout
-
-```
-backend/                 Python package (uv)
-  data/karachi_roads.json   OSM major-road graph of Karachi (55,758 nodes), © OpenStreetMap contributors (ODbL)
-  src/qroute/
-    roadgraph.py         Overpass download → compact road graph, Dijkstra
-    solvers.py           brute force / parallel (process pool + Held–Karp) / quantum (Dürr–Høyer in Qiskit)
-    geo.py               OSRM travel-time matrix + road geometry for any country (cached)
-    vrp.py               multi-convoy routing: vectorised plan evaluation, parallel brute force, Dürr–Høyer
-    cases.py             three real disaster cases → results/cases/*.json (uv run qroute-cases)
-    server.py            FastAPI: /api/info, /api/solve, /api/cases, /api/solve-geo
-    network.py           synthetic Karachi transit network for the evacuation study
-    raptor.py            RAPTOR router (Delling et al.), written from the paper
-    model.py             evacuation model → QUBO → Ising (SparsePauliOp)
-    qaoa.py              penalty & XY-mixer QAOA, CVaR training, Aer sampling
-    cluster.py           cluster decomposition for large instances
-    grover_min.py        Dürr–Høyer quantum minimum finding
-    baselines.py         brute force, greedy, simulated annealing
-    run_demo.py          evacuation experiments → results.json
-    report.py            builds the .docx report and figures
-  tests/                 pytest
-frontend/                React + Vite + Leaflet
-  src/App.jsx, RaceMap.jsx, DotLayer.js   convoy router (race UI)
-  src/Study.jsx                           evacuation QAOA study dashboard
-  src/Country.jsx, CountryCharts.jsx      country-scale disasters tab
-  scripts/record-country.mjs              records the country-scale demo
-  scripts/record-demo.mjs                 drives the UI in headless Chrome and records the demo
-docs/media/              demo video, GIF and screenshots
-report/                  Quantum_Evacuation_Routing_Report.docx + figures
-```
+- **Decision variables:** a plan = an assignment of each site to one convoy (hub) plus the visiting order of each convoy. It is encoded as one integer index in [0, N) = permutation rank × compositions + composition rank, which becomes the Grover index register.
+- **Objective:** minimise the makespan, the time until the last site is reached = max over convoys of route travel time, plus 0.001 × total travel time as a tie-break.
+- **Constraints:** every site is visited exactly once by exactly one convoy, and each convoy starts at its hub (open routes).
+- **Data:** road travel times between all points come from the open [OSRM](https://project-osrm.org/) engine on OpenStreetMap data. The city pool matrix is fetched in one request and cached in `backend/data/osrm_cache/`. Final routes are drawn on real road geometry.
 
 ## Setup and running
 
 Requirements: [uv](https://docs.astral.sh/uv/) (installs Python 3.12 automatically) and Node.js 18+.
 
 ```bash
-# Terminal 1: backend API (loads the road graph and starts the worker pool)
+# Terminal 1: backend API
 cd backend
 uv sync
 uv run qroute-server          # http://127.0.0.1:8000
@@ -132,42 +72,52 @@ npm install
 npm run dev                   # open http://localhost:5173
 ```
 
-In the app, click any map to place the depot **A**, then each stop (or use **Add a place…** / **Use example**), and press **Plan route**. Tick *Return to depot* for a round trip. Up to 7 stops are supported (6! = 720 orders, a 10-qubit index register).
+In the app, press **Random stops**, or pick **Hub** / **Site** and click the map. Then press **Run**. Limits: 1–3 hubs, 2–10 sites, N ≤ 4,000,000. Points you click yourself need a live OSRM request; random scenarios use the cached city matrix.
 
 Other commands (from `backend/`):
 
 ```bash
-uv run pytest                 # unit tests
-uv run qroute-demo            # re-run the evacuation QAOA experiments (~8 min) → results.json
-uv run qroute-report          # rebuild the .docx report
-uv run python -m qroute.roadgraph   # re-download OSM roads and rebuild the graph cache
+uv run pytest                 # 18 unit tests
+uv run qroute-cases           # three documented disaster cases (Sindh 2022, Pakistan 3 hubs, Türkiye–Syria 2023) → backend/results/cases/
+uv run qroute-demo            # evacuation QAOA study (RAPTOR + QAOA, penalty vs XY mixer) → backend/results/
+uv run qroute-report          # rebuild report/Quantum_Evacuation_Routing_Report.docx
 ```
 
-To record the demo again, start both servers, then run `node scripts/record-demo.mjs` in `frontend/`. Chrome must be installed; run `npx playwright-core install ffmpeg` once.
+Record the demo again with both servers running: `cd frontend && node scripts/record-demo.mjs`. Chrome must be installed; run `npx playwright-core install ffmpeg` once.
 
-## Evacuation QAOA study: headline results
+## Repository layout
 
-Open the **Evacuation QAOA study** tab in the app. Full numbers are in `backend/results/run_log.txt` and the report.
+```
+backend/src/qroute/
+  server.py      FastAPI: /api/random, /api/run, /api/cases, /api/solve-geo
+  pool.py        49 Pakistani cities (8 hubs), cached OSRM matrix, random scenario generator
+  run.py         run_plan: brute force, parallel, quantum + road geometry for the best plan
+  vrp.py         plan indexing, vectorised evaluation, parallel brute force, Dürr–Høyer search
+  geo.py         OSRM table/route client with caching and haversine fallback
+  grover_min.py  Grover circuit (Qiskit) used for small instances and to verify the closed form
+  cases.py       three documented disaster cases
+  raptor.py, model.py, qaoa.py, cluster.py, baselines.py, network.py, run_demo.py, report.py
+                 evacuation QAOA study (RAPTOR transit routing + QUBO + QAOA), see report/
+  roadgraph.py, solvers.py   Karachi street-level road graph and solvers (earlier prototype)
+backend/tests/   pytest (Grover closed form vs Qiskit, plan bijection, Ising mapping, XY mixer, ...)
+frontend/src/    App.jsx (sidebar), PlanMap.jsx (map + playback), theme.js, mock.js (dev-only fallback)
+docs/media/      demo video, GIF and screenshots
+report/          Quantum_Evacuation_Routing_Report.docx (QAOA study)
+```
 
-12-qubit instance (4 groups × 3 journeys, 81 feasible assignments, 4096 shots):
+## Also in the repository: evacuation QAOA study
 
-| QAOA | P(feasible) | P(optimal) | Approx. ratio |
-|---|---|---|---|
-| Penalty p=1 / 2 / 3 | 39% / 58% / 98% | 0.6% / 0.7% / 1.3% | 0.52 |
-| **XY-mixer p=1 / 2 / 3** | **100% / 100% / 100%** | **15.1% / 6.7% / 16.8%** | 0.79–0.86 |
-
-- A random feasible guess finds the optimum 1.2% of the time. The coordinated optimum is 1.44% better than uncoordinated routing (everyone taking their fastest RAPTOR journey).
-- 36-variable city instance: **clustered XY-QAOA reaches the exact optimum (0.00% gap)**. Greedy is 1.61% worse, and even worse than no coordination (1.03%).
-- Dürr–Høyer over RAPTOR labels: about 25 oracle queries to reach the minimum at N=64, against 63 classical comparisons.
+RAPTOR transit routing combined with QAOA assigns evacuee groups to bus journeys, trading travel time against bus crowding and shelter load. On a 12-qubit instance, XY-mixer QAOA keeps 100% of samples feasible against 39–98% for penalty QAOA. It samples the exact optimum 7–17% of the time, against 1.2% for a random guess. Clustered XY-QAOA reaches the exact optimum of a 36-variable city instance. Details and limitations are in the report and `backend/results/run_log.txt`.
 
 ## Limitations
 
-- All quantum results come from classical simulation; wall-clock times for the quantum stage reflect the simulator, not quantum hardware.
-- The Grover oracle is a diagonal phase gate built from tour costs computed classically. A real advantage would need those costs computed reversibly on-chip, which we did not build.
-- The road graph is undirected (one-way restrictions are ignored) and uses free-flow speeds by road class. It also covers major roads only (motorway to tertiary).
-- Parallel speedup is limited by process start and data transfer overheads, and by stops far apart (bounded searches then cover most of the city).
-- Evacuation study timetables, capacities and group sizes are synthetic; landmark coordinates are real.
+- All quantum results come from classical simulation.
+- The oracle is emulated from classically computed costs, and no hardware resource estimate is made.
+- Travel times are free-flow OSRM estimates. They ignore flood-closed roads, which a real deployment would need from live damage data.
+- City coordinates are city centres snapped to the nearest road.
+- Parallel speedup is limited by process overheads.
+- Wall-clock comparisons depend on the machine and its load.
 
 ## Credits
 
-RAPTOR: Delling, Pajor & Werneck (2012/2015). QAOA: Farhi et al. (2014). XY mixer: Hadfield et al. (2019). CVaR: Barkoutsos et al. (2020). Minimum finding: Dürr & Høyer (1996), BBHT (1998). Held–Karp: Held & Karp (1962). Route-choice QUBO idea inspired by Neukart et al. (2017). Built with Qiskit, Qiskit Aer, FastAPI, React and Leaflet. Road data and map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL). All code was written for this project; no tutorial code was copied.
+Dürr & Høyer (1996), BBHT (1998), Grover (1996). QAOA: Farhi et al. (2014). XY mixer: Hadfield et al. (2019). CVaR: Barkoutsos et al. (2020). RAPTOR: Delling, Pajor & Werneck (2015). Held–Karp (1962). Built with Qiskit, Qiskit Aer, FastAPI, React and Leaflet. Road data, routing and map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL), routing by OSRM. All code was written for this project; no tutorial code was copied.
