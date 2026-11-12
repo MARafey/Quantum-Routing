@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import RaceMap from './RaceMap.jsx'
 import Study from './Study.jsx'
+import Country from './Country.jsx'
 import { METHODS, ROUTE, fmtMin, fmtMs, plural, stopLetter } from './theme.js'
 import './App.css'
 
@@ -234,8 +235,9 @@ export default function App() {
       <nav className="views">
         <button className={view === 'router' ? 'on' : ''} onClick={() => setView('router')}>Convoy router</button>
         <button className={view === 'study' ? 'on' : ''} onClick={() => setView('study')}>Evacuation QAOA study</button>
+        <button className={view === 'country' ? 'on' : ''} onClick={() => setView('country')}>Country-scale disasters</button>
       </nav>
-      {view === 'router' ? <Router info={info} /> : <Study />}
+      {view === 'router' ? <Router info={info} /> : view === 'study' ? <Study /> : <Country />}
     </>
   )
 }

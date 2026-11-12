@@ -30,3 +30,4 @@ dev = [
 qroute-demo = "qroute.run_demo:main"
 qroute-report = "qroute.report:main"
 qroute-server = "qroute.server:main"
+qroute-cases = "qroute.cases:main"
