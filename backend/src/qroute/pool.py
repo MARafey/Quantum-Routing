@@ -8,6 +8,7 @@ import threading
 import numpy as np
 
 from . import geo
+from .regions_data import DATA as _DATA
 
 # (name, lat, lon, region, hub)
 CITIES: list[tuple[str, float, float, str, bool]] = [
@@ -46,20 +47,74 @@ _lock = threading.Lock()
 _cache: dict = {}
 
 
-def pool_matrix() -> tuple[np.ndarray, str]:
+PAKISTAN_BBOX = (23.5, 37.5, 60.5, 77.5)  # lat_min, lat_max, lon_min, lon_max
+
+
+def _mk_regions() -> dict[str, dict]:
+    regs = {"pakistan": {"id": "pakistan", "name": "Pakistan floods", "bbox": PAKISTAN_BBOX,
+                         "cities": CITIES, "countries": ["Pakistan"]}}
+    for rid, (name, bbox, cities) in _DATA.items():
+        regs[rid] = {"id": rid, "name": name, "bbox": bbox, "cities": cities,
+                     "countries": list(dict.fromkeys(c[3] for c in cities))}
+    return regs
+
+
+REGIONS = _mk_regions()
+
+
+def region_info(rid: str) -> dict:
+    r = REGIONS[rid]
+    return {"id": rid, "name": r["name"],
+            "bbox": {"lat_min": r["bbox"][0], "lat_max": r["bbox"][1],
+                     "lon_min": r["bbox"][2], "lon_max": r["bbox"][3]},
+            "countries": r["countries"], "hubs": [c[0] for c in r["cities"] if c[4]]}
+
+
+def in_bbox(rid: str, lat: float, lon: float) -> bool:
+    b = REGIONS[rid]["bbox"]
+    return b[0] <= lat <= b[1] and b[2] <= lon <= b[3]
+
+
+def _matrix_with_fallback(points: list[tuple[float, float]]) -> tuple[np.ndarray, str]:
+    """One OSRM table request; null pairs fall back to haversine for that pair only."""
+    coords = ";".join(f"{lon:.5f},{lat:.5f}" for lat, lon in points)
+    try:
+        d = geo._get_json(f"{geo.OSRM}/table/v1/driving/{coords}?annotations=duration")
+        dur = d.get("durations")
+        if d.get("code") != "Ok" or dur is None:
+            raise ValueError("OSRM table not ok")
+    except Exception as e:
+        print(f"[pool] OSRM table failed ({e}); haversine fallback")
+        return geo._fallback_matrix(points), "haversine-fallback"
+    D = np.zeros((len(points), len(points)))
+    nulls = 0
+    for i, row in enumerate(dur):
+        for j, x in enumerate(row):
+            if x is None:
+                nulls += 1
+                D[i, j] = geo.haversine_m(points[i], points[j]) * 1.35 / (55 / 3.6)
+            else:
+                D[i, j] = x
+    return D, ("osrm+fallback" if nulls else "osrm")
+
+
+def pool_matrix(region: str = "pakistan") -> tuple[np.ndarray, str]:
     """Full pool duration matrix (one OSRM table call, then in memory)."""
     with _lock:
-        if "m" not in _cache:
-            _cache["m"] = geo.travel_matrix([(c[1], c[2]) for c in CITIES])
-        return _cache["m"]
+        if region not in _cache:
+            pts = [(c[1], c[2]) for c in REGIONS[region]["cities"]]
+            _cache[region] = geo.travel_matrix(pts) if region == "pakistan" else _matrix_with_fallback(pts)
+        return _cache[region]
 
 
-def pool_lookup(points: list[tuple[str, float, float]]) -> list[int] | None:
+def pool_lookup(points: list[tuple[str, float, float]], region: str = "pakistan") -> list[int] | None:
     """Pool indices if every (name, lat, lon) is a pool city at its own coordinates, else None."""
     out = []
+    cities = REGIONS[region]["cities"]
+    index = {c[0]: i for i, c in enumerate(cities)}
     for name, lat, lon in points:
-        i = INDEX.get(name)
-        if i is None or abs(CITIES[i][1] - lat) > 1e-4 or abs(CITIES[i][2] - lon) > 1e-4:
+        i = index.get(name)
+        if i is None or abs(cities[i][1] - lat) > 1e-4 or abs(cities[i][2] - lon) > 1e-4:
             return None
         out.append(i)
     return out
@@ -76,7 +131,35 @@ def _spread_ok(idx: list[int]) -> bool:
     return (max(lats) - min(lats) > 4 or max(lons) - min(lons) > 4) and len({CITIES[i][3] for i in idx}) >= 3
 
 
-def random_scenario(seed: int | None = None) -> dict:
+def _random_generic(rid: str, seed: int | None) -> dict:
+    """Cross-border region: >=2 sites in each of 2 countries, sites span >35% of the region extent."""
+    cities = REGIONS[rid]["cities"]
+    rng = random.Random(seed)
+    hubs_all = [i for i, c in enumerate(cities) if c[4]]
+    k, n = rng.choice([(k, n) for k, n in CONFIGS if k <= len(hubs_all)])
+    hubs = rng.sample(hubs_all, k)
+    others = [i for i in range(len(cities)) if i not in hubs]
+    lat_span = max(c[1] for c in cities) - min(c[1] for c in cities)
+    lon_span = max(c[2] for c in cities) - min(c[2] for c in cities)
+
+    def pt(i: int) -> dict:
+        return {"name": cities[i][0], "lat": cities[i][1], "lon": cities[i][2]}
+
+    for _ in range(5000):
+        sites = rng.sample(others, n)
+        cnt: dict[str, int] = {}
+        for i in sites:
+            cnt[cities[i][3]] = cnt.get(cities[i][3], 0) + 1
+        lats, lons = [cities[i][1] for i in sites], [cities[i][2] for i in sites]
+        spread = max(lats) - min(lats) > 0.35 * lat_span or max(lons) - min(lons) > 0.35 * lon_span
+        if spread and sum(v >= 2 for v in cnt.values()) >= 2:
+            return {"region": rid, "hubs": [pt(i) for i in hubs], "sites": [pt(i) for i in sites]}
+    raise RuntimeError("could not draw a spread scenario")
+
+
+def random_scenario(seed: int | None = None, region: str = "pakistan") -> dict:
+    if region != "pakistan":
+        return _random_generic(region, seed)
     rng = random.Random(seed)
     k, n = rng.choice(CONFIGS)
     hubs_all = [i for i, c in enumerate(CITIES) if c[4]]
@@ -99,5 +182,5 @@ def random_scenario(seed: int | None = None) -> dict:
         sites = sites[:n]
         if len(set(sites)) == n and _spread_ok(sites):
             rng.shuffle(sites)
-            return {"hubs": [_pt(i) for i in hubs], "sites": [_pt(i) for i in sites]}
+            return {"region": "pakistan", "hubs": [_pt(i) for i in hubs], "sites": [_pt(i) for i in sites]}
     raise RuntimeError("could not draw a spread scenario")

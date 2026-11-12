@@ -79,6 +79,11 @@ def encode_plan(perm: list[int], comp: tuple[int, ...], k: int, n: int) -> int:
     return rank * len(compositions(n, k)) + cr
 
 
+def encode(plan: tuple[list[int], tuple[int, ...]], k: int, n: int) -> int:
+    """Inverse of decode_index: plan = (site permutation, composition) -> plan index."""
+    return encode_plan(list(plan[0]), tuple(plan[1]), k, n)
+
+
 def decode(index: int, D: np.ndarray, k: int, n: int, ret: bool = False) -> dict:
     perm, comp = decode_index(index, k, n)
     routes, a = [], 0
@@ -168,6 +173,89 @@ def parallel_brute_force(D, k, n, ret, pool: ProcessPoolExecutor) -> dict:
     return {"ms": ms, "evaluated": num_plans(n, k), "index": bi, "cost": best, "workers": w}
 
 
+def _route_time(D, k: int, v: int, r: list[int], ret: bool) -> float:
+    if not r:
+        return 0.0
+    t = D[v, k + r[0]] + sum(D[k + r[i], k + r[i + 1]] for i in range(len(r) - 1))
+    return float(t + (D[k + r[-1], v] if ret else 0.0))
+
+
+def classical_heuristic_plan(D: np.ndarray, k: int, n: int, ret: bool = False) -> dict:
+    """Cheapest insertion (minimising the plan cost) followed by relocate/swap local search.
+
+    Every candidate plan whose cost is computed counts as one plan evaluation (reported, not hidden)."""
+    t0 = time.perf_counter()
+    evals = [0]
+    routes: list[list[int]] = [[] for _ in range(k)]
+    times = [0.0] * k
+
+    def cost_of(ts: list[float]) -> float:
+        evals[0] += 1
+        return max(ts) + TIE * sum(ts)
+
+    # insert far-from-depot sites first
+    order = sorted(range(n), key=lambda s: -min(D[v, k + s] for v in range(k)))
+    for s_ in order:
+        best = None
+        for v in range(k):
+            for pos in range(len(routes[v]) + 1):
+                nr = routes[v][:pos] + [s_] + routes[v][pos:]
+                nt = _route_time(D, k, v, nr, ret)
+                c = cost_of(times[:v] + [nt] + times[v + 1:])
+                if best is None or c < best[0]:
+                    best = (c, v, pos, nt)
+        _, v, pos, nt = best
+        routes[v].insert(pos, s_)
+        times[v] = nt
+    cur = max(times) + TIE * sum(times)
+    for _ in range(6):  # local search passes
+        improved = False
+        for v in range(k):  # relocate one site anywhere
+            for a in range(len(routes[v])):
+                if a >= len(routes[v]):
+                    break
+                s_ = routes[v][a]
+                for w in range(k):
+                    rest_v = routes[v][:a] + routes[v][a + 1:]
+                    for pos in range(len(routes[w]) + 1):
+                        if w == v and pos == a:
+                            continue
+                        base = rest_v if w == v else routes[w]
+                        nr_w = base[:pos] + [s_] + base[pos:]
+                        ts = list(times)
+                        ts[w] = _route_time(D, k, w, nr_w, ret)
+                        if w != v:
+                            ts[v] = _route_time(D, k, v, rest_v, ret)
+                        c = cost_of(ts)
+                        if c < cur - 1e-9:
+                            if w == v:
+                                routes[v] = nr_w
+                            else:
+                                routes[v], routes[w] = rest_v, nr_w
+                            times, cur, improved = ts, c, True
+                            break
+                    else:
+                        continue
+                    break
+        for v in range(k):  # 2-opt (segment reversal) inside a route
+            r = routes[v]
+            for i in range(len(r) - 1):
+                for j in range(i + 1, len(r)):
+                    nr = r[:i] + r[i:j + 1][::-1] + r[j + 1:]
+                    ts = list(times)
+                    ts[v] = _route_time(D, k, v, nr, ret)
+                    c = cost_of(ts)
+                    if c < cur - 1e-9:
+                        routes[v], r, times, cur, improved = nr, nr, ts, c, True
+        if not improved:
+            break
+    perm = [s_ for r in routes for s_ in r]
+    comp = tuple(len(r) for r in routes)
+    plan = (perm, comp)
+    return {"plan": plan, "index": encode(plan, k, n), "cost": cur, "evals": evals[0],
+            "ms": 1000 * (time.perf_counter() - t0)}
+
+
 def grover_p_marked(M: int, q: int, j: int) -> float:
     if M <= 0:
         return 0.0
@@ -175,19 +263,25 @@ def grover_p_marked(M: int, q: int, j: int) -> float:
     return math.sin((2 * j + 1) * theta) ** 2
 
 
-def quantum_min_search(costs: np.ndarray, seed: int = 7, max_qiskit_qubits: int = 12) -> dict:
-    """Dürr–Høyer minimum finding with the BBHT schedule (lambda=6/5)."""
+def quantum_min_search(costs: np.ndarray, seed: int = 7, max_qiskit_qubits: int = 12,
+                       init_index: int | None = None, presorted: np.ndarray | None = None) -> dict:
+    """Dürr–Høyer minimum finding with the BBHT schedule (lambda=6/5).
+
+    init_index: warm start (threshold = that plan instead of a uniformly random one), as in Grover
+    Adaptive Search (Gilliam, Woerner, Gonciulea, Quantum 5, 428 (2021)).  presorted: argsort(costs)."""
     rng = np.random.default_rng(seed)
     N = len(costs)
     q = max(1, math.ceil(math.log2(N)))
     size = 2**q
     t0 = time.perf_counter()
-    order = np.argsort(costs, kind="stable")
+    order = presorted if presorted is not None else np.argsort(costs, kind="stable")
     sc = costs[order]
     true_min = float(sc[0])
     budget = 22.5 * math.sqrt(N) + 1.4 * math.log2(N) ** 2
     real = q <= max_qiskit_qubits
-    y = int(rng.integers(N))
+    y = int(rng.integers(N))  # always drawn so the RNG stream matches the standard variant
+    if init_index is not None:
+        y = int(init_index)
     queries, qtm = 0, (0 if costs[y] == true_min else None)
     lam, m = 6 / 5, 1.0
     log = [(0, y, True)]

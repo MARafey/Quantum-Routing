@@ -15,3 +15,5 @@ Thumbs.db
 backend/data/osm_raw.json
 # Raw browser recordings (converted to mp4/gif)
 docs/media/*.webm
+docs/architecture/node_modules/
+docs/architecture/package*.json

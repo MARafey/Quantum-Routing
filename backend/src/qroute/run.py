@@ -33,13 +33,14 @@ def _convoy_geometry(coords: list[tuple[float, float]]) -> tuple[list[list[float
         return straight, round(hav, 1)
 
 
-def run_plan(hubs: list[dict], sites: list[dict], pool_executor, return_to_depot: bool = False) -> dict:
+def run_plan(hubs: list[dict], sites: list[dict], pool_executor, return_to_depot: bool = False,
+             region: str = "pakistan") -> dict:
     k, n = len(hubs), len(sites)
     allp = list(hubs) + list(sites)
     N = vrp.num_plans(n, k)
-    idx = pool.pool_lookup([(p["name"], p["lat"], p["lon"]) for p in allp])
+    idx = pool.pool_lookup([(p["name"], p["lat"], p["lon"]) for p in allp], region)
     if idx is not None:
-        M, src = pool.pool_matrix()
+        M, src = pool.pool_matrix(region)
         D = np.ascontiguousarray(M[np.ix_(idx, idx)])
         source = src + "-pool"
     else:
@@ -57,13 +58,22 @@ def run_plan(hubs: list[dict], sites: list[dict], pool_executor, return_to_depot
     def opt(c):
         return bool(abs(c - gmin) <= 1e-9 * max(1.0, abs(gmin)))
 
-    bs, ps, qs = (vrp.decode(r["index"], D, k, n, ret) for r in (b, p, qr))
-    qtm = qr["queries_to_min"]
-    samples = [{"q": s["q"], "routes": vrp.decode(s["index"], D, k, n, ret)["routes"]}
-               for s in qr["samples"] if s["cost_s"] is not None]
-    if len(samples) > 150:
-        keep = np.linspace(0, len(samples) - 1, 150).round().astype(int)
-        samples = [samples[i] for i in sorted(set(keep.tolist()))]
+    h = vrp.classical_heuristic_plan(D, k, n, ret)
+    qw = vrp.quantum_min_search(costs, SEED, init_index=h["index"])
+    bs, ps, qs, ws = (vrp.decode(r["index"], D, k, n, ret) for r in (b, p, qr, qw))
+    hs = vrp.decode(h["index"], D, k, n, ret)
+    qtm, wtm = qr["queries_to_min"], qw["queries_to_min"]
+
+    def thin(qres):
+        smp = [{"q": s["q"], "routes": vrp.decode(s["index"], D, k, n, ret)["routes"]}
+               for s in qres["samples"] if s["cost_s"] is not None]
+        if len(smp) > 150:
+            keep = np.linspace(0, len(smp) - 1, 150).round().astype(int)
+            smp = [smp[i] for i in sorted(set(keep.tolist()))]
+        return smp
+
+    samples, ws_samples = thin(qr), thin(qw)
+    hev = h["evals"]
 
     pts = [(q["lat"], q["lon"]) for q in allp]
     geom, dist = [], []
@@ -73,7 +83,7 @@ def run_plan(hubs: list[dict], sites: list[dict], pool_executor, return_to_depot
         dist.append(km)
 
     return {
-        "k": k, "n": n, "N": N, "qubits": qr["qubits"], "matrix_source": source,
+        "region": region, "k": k, "n": n, "N": N, "qubits": qr["qubits"], "matrix_source": source,
         "points": [{"name": q["name"], "lat": q["lat"], "lon": q["lon"], "kind": "hub" if i < k else "site"}
                    for i, q in enumerate(allp)],
         "methods": {
@@ -86,6 +96,13 @@ def run_plan(hubs: list[dict], sites: list[dict], pool_executor, return_to_depot
                         "coverage_pct": 100 * qtm / N if qtm is not None else None,
                         "total_coverage_pct": 100 * qr["queries"] / N, "backend": qr["backend"],
                         "optimal": opt(qr["cost"]), "makespan_s": qs["makespan_s"], "samples": samples},
+            "quantum_ws": {"ms": qw["ms"], "oracle_table_ms": oracle_ms, "queries": qw["queries"],
+                           "queries_to_min": wtm,
+                           "coverage_pct": 100 * (wtm + hev) / N if wtm is not None else None,
+                           "total_coverage_pct": 100 * (qw["queries"] + hev) / N, "backend": qw["backend"],
+                           "optimal": opt(qw["cost"]), "makespan_s": ws["makespan_s"], "samples": ws_samples,
+                           "heuristic_ms": h["ms"], "heuristic_evals": hev,
+                           "heuristic_makespan_s": hs["makespan_s"]},
         },
         "best": {"routes": bs["routes"], "makespan_s": bs["makespan_s"], "total_s": bs["total_s"],
                  "geometry": geom, "distance_km": dist},

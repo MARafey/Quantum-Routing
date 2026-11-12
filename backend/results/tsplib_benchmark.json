@@ -1,0 +1,236 @@
+{
+  "instance": "burma14 prefixes (first n nodes), closed tour from city 1, TSPLIB GEO distance",
+  "warm_start_supported": true,
+  "runs_per_config": 20,
+  "rows": [
+    {
+      "n": 5,
+      "N": 24,
+      "qubits": 5,
+      "onehot_qubits": 25,
+      "optimum": 2321.0,
+      "nn_cost": 2321.0,
+      "nn_gap_pct": 0.0,
+      "brute_force_ms": 0.04380000245873816,
+      "held_karp_states": 256,
+      "cold": {
+        "backend": "qiskit-statevector",
+        "success_rate": 1.0,
+        "queries_to_min_median": 9.0,
+        "queries_to_min_mean": 9.8,
+        "coverage_pct_median": 37.5,
+        "ratio_N_over_queries_median": 2.6666666666666665,
+        "budget": 139.65767201146988
+      },
+      "warm": {
+        "backend": "qiskit-statevector",
+        "success_rate": 1.0,
+        "queries_to_min_median": 0.0,
+        "queries_to_min_mean": 0.0,
+        "coverage_pct_median": 0.0,
+        "ratio_N_over_queries_median": null,
+        "budget": 139.65767201146988
+      }
+    },
+    {
+      "n": 6,
+      "N": 120,
+      "qubits": 7,
+      "onehot_qubits": 36,
+      "optimum": 2336.0,
+      "nn_cost": 2495.0,
+      "nn_gap_pct": 6.806506849315075,
+      "brute_force_ms": 0.047900000936351717,
+      "held_karp_states": 800,
+      "cold": {
+        "backend": "qiskit-statevector",
+        "success_rate": 1.0,
+        "queries_to_min_median": 17.0,
+        "queries_to_min_mean": 19.45,
+        "coverage_pct_median": 14.166666666666666,
+        "ratio_N_over_queries_median": 7.0588235294117645,
+        "budget": 313.2623436569123
+      },
+      "warm": {
+        "backend": "qiskit-statevector",
+        "success_rate": 1.0,
+        "queries_to_min_median": 15.5,
+        "queries_to_min_mean": 15.3,
+        "coverage_pct_median": 12.916666666666668,
+        "ratio_N_over_queries_median": 7.741935483870968,
+        "budget": 313.2623436569123
+      }
+    },
+    {
+      "n": 7,
+      "N": 720,
+      "qubits": 10,
+      "onehot_qubits": 49,
+      "optimum": 2378.0,
+      "nn_cost": 2777.0,
+      "nn_gap_pct": 16.77880571909167,
+      "brute_force_ms": 0.06660000144620426,
+      "held_karp_states": 2304,
+      "cold": {
+        "backend": "qiskit-statevector",
+        "success_rate": 1.0,
+        "queries_to_min_median": 53.5,
+        "queries_to_min_mean": 58.9,
+        "coverage_pct_median": 7.430555555555555,
+        "ratio_N_over_queries_median": 13.457943925233645,
+        "budget": 729.8717392081677
+      },
+      "warm": {
+        "backend": "qiskit-statevector",
+        "success_rate": 1.0,
+        "queries_to_min_median": 54.5,
+        "queries_to_min_mean": 56.0,
+        "coverage_pct_median": 7.569444444444444,
+        "ratio_N_over_queries_median": 13.211009174311927,
+        "budget": 729.8717392081677
+      }
+    },
+    {
+      "n": 8,
+      "N": 5040,
+      "qubits": 13,
+      "onehot_qubits": 64,
+      "optimum": 2382.0,
+      "nn_cost": 2891.0,
+      "nn_gap_pct": 21.368597816960545,
+      "brute_force_ms": 0.22850000095786527,
+      "held_karp_states": 6272,
+      "cold": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 177.5,
+        "queries_to_min_mean": 197.65,
+        "coverage_pct_median": 3.5218253968253967,
+        "ratio_N_over_queries_median": 28.3943661971831,
+        "budget": 1809.1202664682833
+      },
+      "warm": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 227.0,
+        "queries_to_min_mean": 241.55,
+        "coverage_pct_median": 4.503968253968254,
+        "ratio_N_over_queries_median": 22.202643171806166,
+        "budget": 1809.1202664682833
+      }
+    },
+    {
+      "n": 9,
+      "N": 40320,
+      "qubits": 16,
+      "onehot_qubits": 81,
+      "optimum": 2626.0,
+      "nn_cost": 3159.0,
+      "nn_gap_pct": 20.297029702970292,
+      "brute_force_ms": 2.079099998809397,
+      "held_karp_states": 16384,
+      "cold": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 538.0,
+        "queries_to_min_mean": 506.2,
+        "coverage_pct_median": 1.3343253968253967,
+        "ratio_N_over_queries_median": 74.94423791821562,
+        "budget": 4845.656215669848
+      },
+      "warm": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 546.5,
+        "queries_to_min_mean": 547.1,
+        "coverage_pct_median": 1.355406746031746,
+        "ratio_N_over_queries_median": 73.77859103385178,
+        "budget": 4845.656215669848
+      }
+    },
+    {
+      "n": 10,
+      "N": 362880,
+      "qubits": 19,
+      "onehot_qubits": 100,
+      "optimum": 3114.0,
+      "nn_cost": 3603.0,
+      "nn_gap_pct": 15.703275529865124,
+      "brute_force_ms": 50.38559999957215,
+      "held_karp_states": 41472,
+      "cold": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 1406.5,
+        "queries_to_min_mean": 1434.55,
+        "coverage_pct_median": 0.38759369488536155,
+        "ratio_N_over_queries_median": 258.0021329541415,
+        "budget": 14031.444854157848
+      },
+      "warm": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 1204.0,
+        "queries_to_min_mean": 1171.05,
+        "coverage_pct_median": 0.33179012345679015,
+        "ratio_N_over_queries_median": 301.3953488372093,
+        "budget": 14031.444854157848
+      }
+    },
+    {
+      "n": 11,
+      "N": 3628800,
+      "qubits": 22,
+      "onehot_qubits": 121,
+      "optimum": 3136.0,
+      "nn_cost": 3625.0,
+      "nn_gap_pct": 15.593112244897966,
+      "brute_force_ms": 494.8316999980307,
+      "held_karp_states": 102400,
+      "cold": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 4534.0,
+        "queries_to_min_mean": 4551.75,
+        "coverage_pct_median": 0.12494488536155203,
+        "ratio_N_over_queries_median": 800.352889280988,
+        "budget": 43525.96172155383
+      },
+      "warm": {
+        "backend": "grover-closed-form",
+        "success_rate": 1.0,
+        "queries_to_min_median": 4883.5,
+        "queries_to_min_mean": 4945.2,
+        "coverage_pct_median": 0.1345761684303351,
+        "ratio_N_over_queries_median": 743.0736152349749,
+        "budget": 43525.96172155383
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "arXiv 2212.02735",
+      "claim": "Grover adaptive search for TSP: 7-node TSP needs 31 qubits; optimal-solution success rate 86.71%"
+    },
+    {
+      "id": "ICTC 2025 F01-4",
+      "claim": "Standard Grover TSP: 24 qubits for 4 cities, 56 qubits for 5 cities"
+    },
+    {
+      "id": "arXiv 2106.05948",
+      "claim": "D-Wave hybrid on TSPLIB burma14: best hybrid result ~6.7% above optimum"
+    },
+    {
+      "id": "arXiv 2012.04984",
+      "claim": "D-Wave studies on TSPLIB instances (burma14 / ulysses16 class)"
+    }
+  ],
+  "notes": [
+    "The oracle is emulated from classical costs: the full cost array is computed classically; quantum queries are counted, not a reversible cost circuit.",
+    "Queries are Grover iterations (+1 per measurement), not wall-clock; simulation time is not comparable to hardware or brute-force time.",
+    "Index-register (ceil(log2 N) qubits) and one-hot (n^2 qubits) encodings are different trade-offs: the index register needs a reversible circuit computing tour cost from the index (ancilla/depth not counted); one-hot needs penalty terms.",
+    "Success = optimum found within the Durr-Hoyer query budget (22.5*sqrt(N)+1.4*log2(N)^2); once held it is never lost.",
+    "For tiny N the query count can be comparable to N, so no advantage over classical enumeration; the sqrt(N) scaling only pays off as N grows.",
+    "Backend per row: Qiskit statevector when qubits<=12, exact closed-form Grover statistics otherwise."
+  ]
+}

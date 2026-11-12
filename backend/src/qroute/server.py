@@ -21,7 +21,8 @@ state: dict = {}
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     state["pool"] = vrp.make_pool()
-    asyncio.get_running_loop().run_in_executor(None, pool.pool_matrix)  # warm the OSRM pool matrix
+    for r in pool.REGIONS:  # warm the OSRM pool matrices
+        asyncio.get_running_loop().run_in_executor(None, pool.pool_matrix, r)
     yield
     state["pool"].shutdown()
 
@@ -33,29 +34,43 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
 
 class Pt(BaseModel):
     name: str = "point"
-    lat: float = Field(ge=23.5, le=37.5)
-    lon: float = Field(ge=60.5, le=77.5)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
 
 
 class RunRequest(BaseModel):
+    region: str = "pakistan"
     hubs: list[Pt] = Field(min_length=1, max_length=3)
     sites: list[Pt] = Field(min_length=2, max_length=10)
     return_to_depot: bool = False
 
 
+@app.get("/api/regions")
+def regions() -> list:
+    return [pool.region_info(r) for r in pool.REGIONS]
+
+
 @app.get("/api/random")
-def random_route(seed: int | None = None) -> dict:
-    return pool.random_scenario(seed)
+def random_route(seed: int | None = None, region: str = "pakistan") -> dict:
+    if region not in pool.REGIONS:
+        raise HTTPException(404, f"unknown region '{region}'")
+    return pool.random_scenario(seed, region)
 
 
 @app.post("/api/run")
 async def run_route(req: RunRequest) -> dict:
+    if req.region not in pool.REGIONS:
+        raise HTTPException(404, f"unknown region '{req.region}'")
+    for p in req.hubs + req.sites:
+        if not pool.in_bbox(req.region, p.lat, p.lon):
+            raise HTTPException(422, f"Point '{p.name}' is outside the {req.region} region")
     k, n = len(req.hubs), len(req.sites)
     N = vrp.num_plans(n, k)
     if N > 4_000_000:
         raise HTTPException(422, f"Too many possible plans (N={N:,}); remove a site or a hub")
     return await run_in_threadpool(run.run_plan, [h.model_dump() for h in req.hubs],
-                                   [s.model_dump() for s in req.sites], state["pool"], req.return_to_depot)
+                                   [s.model_dump() for s in req.sites], state["pool"], req.return_to_depot,
+                                   req.region)
 
 
 CASES_DIR = _cases.OUT_DIRS[0]
